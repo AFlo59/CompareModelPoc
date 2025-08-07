@@ -28,4 +28,6 @@ jobs:
 
     - name: Run unit tests
       run: |
-        pytest tests/
+        export PYTHONPATH=.
+        pytest tests/ --maxfail=1 --disable-warnings -q
+
