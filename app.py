@@ -517,7 +517,16 @@ def show_character_creation_page() -> None:
     if not require_auth():
         return
 
-    st.title("🧙 Créez votre Personnage")
+    # Vérifier qu'on a une campagne active
+    if "campaign" not in st.session_state or not st.session_state.campaign:
+        st.error("❌ Aucune campagne active. Veuillez d'abord créer ou sélectionner une campagne.")
+        if st.button("🏠 Retour au tableau de bord"):
+            st.session_state.page = "dashboard"
+            st.rerun()
+        return
+
+    campaign = st.session_state.campaign
+    st.title(f"🧙 Créez votre Personnage pour '{campaign['name']}'")
 
     # Bouton retour au dashboard
     if st.button("🏠 Retour au tableau de bord"):
@@ -551,21 +560,45 @@ def show_character_creation_page() -> None:
                 help="Cette description sera utilisée pour générer le portrait",
             )
 
-            submitted = st.form_submit_button("✨ Créer le personnage")
+            # Boutons du formulaire
+            col_portrait, col_create = st.columns(2)
+            with col_portrait:
+                generate_portrait_btn = st.form_submit_button("🎨 Générer le portrait")
+            with col_create:
+                submitted = st.form_submit_button("✨ Créer le personnage")
 
-        # Bouton séparé pour le portrait
-        if st.button("🎨 Générer le portrait"):
-            if name.strip():
+        # Gérer la génération de portrait avec toutes les informations
+        if generate_portrait_btn:
+            if not all([name.strip(), classe, race]):
+                st.error("Les champs nom, classe et race sont obligatoires pour générer le portrait.")
+            else:
                 with st.spinner("🎨 Génération du portrait en cours..."):
-                    portrait_url = generate_portrait(name.strip(), description.strip() if description else None)
+                    # Utiliser TOUTES les informations du personnage pour le portrait
+                    detailed_description = []
+                    
+                    # Informations de base
+                    detailed_description.append(f"{gender} {race} {classe}")
+                    
+                    # Description physique si fournie
+                    if description.strip():
+                        detailed_description.append(description.strip())
+                    
+                    # Détails d'âge
+                    if age < 20:
+                        detailed_description.append("jeune")
+                    elif age > 100:
+                        detailed_description.append("âgé et sage")
+                    
+                    # Prompt complet pour DALL-E
+                    full_description = ", ".join(detailed_description) + ", style art fantastique, haute qualité"
+                    
+                    portrait_url = generate_portrait(name.strip(), full_description)
                     if portrait_url:
                         st.session_state.portrait_url = portrait_url
-                        st.success("✅ Portrait généré avec succès !")
+                        st.success("✅ Portrait généré avec succès avec tous les détails !")
                         st.rerun()
                     else:
-                        st.warning("⚠️ Échec de génération du portrait. Vous pourrez continuer sans portrait.")
-            else:
-                st.error("Veuillez d'abord saisir un nom pour le personnage.")
+                        st.error("❌ Échec de génération du portrait. Vous pourrez continuer sans portrait.")
 
         if submitted:
             if not all([name.strip(), classe, race]):
@@ -576,13 +609,29 @@ def show_character_creation_page() -> None:
                     portrait_url = st.session_state.get("portrait_url")
                     if not portrait_url:
                         with st.spinner("🎨 Génération automatique du portrait..."):
-                            portrait_url = generate_portrait(
-                                name.strip(),
-                                f"{classe} {race}, {description.strip() if description else 'personnage fantastique'}",
-                            )
+                            # Utiliser TOUTES les informations du personnage pour le portrait
+                            detailed_description = []
+                            
+                            # Informations de base
+                            detailed_description.append(f"{gender} {race} {classe}")
+                            
+                            # Description physique si fournie
+                            if description.strip():
+                                detailed_description.append(description.strip())
+                            
+                            # Détails d'âge
+                            if age < 20:
+                                detailed_description.append("jeune")
+                            elif age > 100:
+                                detailed_description.append("âgé et sage")
+                            
+                            # Prompt complet pour DALL-E
+                            full_description = ", ".join(detailed_description) + ", style art fantastique, haute qualité"
+                            
+                            portrait_url = generate_portrait(name.strip(), full_description)
                             if portrait_url:
                                 st.session_state.portrait_url = portrait_url
-                                st.success("✅ Portrait généré automatiquement !")
+                                st.success("✅ Portrait généré automatiquement avec tous les détails !")
 
                     character_id = create_character(
                         st.session_state.user["id"],
