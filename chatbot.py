@@ -181,20 +181,6 @@ def launch_chat_interface(user_id: int) -> None:
                     "_Bienvenue de retour. Voici un rappel de votre session précédente. Reprenez quand vous êtes prêt !_"
                 )
 
-    # Bouton pour réinitialiser la session
-    if st.button("🔄 Recommencer une nouvelle aventure"):
-        st.session_state.history = []
-        conn = get_connection()
-        try:
-            if campaign_id:
-                conn.execute("DELETE FROM messages WHERE user_id = ? AND campaign_id = ?", (user_id, campaign_id))
-            else:
-                conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
-            conn.commit()
-        finally:
-            conn.close()
-        st.rerun()
-
     # Nouvelle session automatique
     if not st.session_state.history:
         char = st.session_state.get("character", {})

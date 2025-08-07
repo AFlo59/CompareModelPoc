@@ -25,7 +25,7 @@ def generate_portrait(name: str, description: str = None) -> str | None:
 
     Args:
         name: Nom du personnage
-        description: Description physique optionnelle
+        description: Description physique complète incluant race, classe, genre, etc.
 
     Returns:
         URL de l'image générée ou None en cas d'erreur
@@ -34,13 +34,23 @@ def generate_portrait(name: str, description: str = None) -> str | None:
         logger.warning("Nom du personnage manquant pour la génération du portrait")
         return None
 
-    prompt = f"Portrait fantastique d'un personnage nommé {name.strip()}, {description or 'aucune description'}, style artistique numérique, haute qualité."
+    # Construction du prompt optimisé pour DALL-E 3
+    if description and description.strip():
+        prompt = f"Portrait fantastique de {name.strip()}, {description.strip()}, style art numérique professionnel, éclairage dramatique, très détaillé, 4K"
+    else:
+        prompt = f"Portrait fantastique d'un personnage nommé {name.strip()}, personnage de jeu de rôle, style art numérique professionnel, très détaillé"
 
     try:
         client = get_openai_client()
-        response = client.images.generate(model="dall-e-3", prompt=prompt, n=1, size="1024x1024", quality="standard")
+        response = client.images.generate(
+            model="dall-e-3", 
+            prompt=prompt, 
+            n=1, 
+            size="1024x1024", 
+            quality="standard"
+        )
         image_url = response.data[0].url
-        logger.info(f"Portrait généré avec succès pour {name}")
+        logger.info(f"Portrait généré avec succès pour {name} - Prompt: {prompt[:100]}...")
         return image_url
     except Exception as e:
         logger.error(f"Erreur lors de la génération du portrait pour {name}: {e}")

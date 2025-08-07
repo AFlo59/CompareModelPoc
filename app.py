@@ -36,18 +36,22 @@ st.markdown(
         margin-bottom: 2rem;
     }
     .character-card {
-        background: #f8f9fa;
-        padding: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
         border-radius: 10px;
         border-left: 4px solid #667eea;
         margin-top: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .campaign-info {
-        background: #e8f4f8;
-        padding: 1rem;
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        padding: 1.5rem;
         border-radius: 10px;
         border-left: 4px solid #17a2b8;
         margin-top: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     /* Réduire l'espace après les images dans la sidebar */
     .sidebar .stImage {
@@ -529,8 +533,33 @@ def show_character_creation_page() -> None:
     col1, col2 = st.columns([2, 1])
 
     with col1:
+        # Variables temporaires pour stocker les valeurs du formulaire
+        if "temp_name" not in st.session_state:
+            st.session_state.temp_name = ""
+        if "temp_description" not in st.session_state:
+            st.session_state.temp_description = ""
+        
+        # Champs de saisie en dehors du formulaire pour la génération de portrait
+        st.session_state.temp_name = st.text_input("� Nom du personnage", value=st.session_state.temp_name, placeholder="Ex: Arwen Lameargent")
+        st.session_state.temp_description = st.text_area(
+            "📝 Description physique",
+            value=st.session_state.temp_description,
+            placeholder="Ex: Grand elfe aux cheveux argentés, porte une armure en cuir noir ornée de runes...",
+            help="Cette description sera utilisée pour générer le portrait",
+        )
+        
+        # Bouton pour générer le portrait (maintenant accessible)
+        if st.button("🎨 Générer le portrait"):
+            if st.session_state.temp_name.strip():
+                # Attendre que toutes les infos soient disponibles pour générer avec tous les détails
+                st.info("ℹ️ Pour un portrait optimal, veuillez d'abord compléter le formulaire ci-dessous (classe, race, genre) puis valider. Le portrait sera généré automatiquement avec tous les détails.")
+            else:
+                st.error("Veuillez d'abord saisir un nom pour le personnage.")
+
         with st.form("character_form"):
-            name = st.text_input("👤 Nom du personnage", placeholder="Ex: Arwen Lameargent")
+            # Utiliser les valeurs déjà saisies
+            name = st.session_state.temp_name
+            description = st.session_state.temp_description
 
             col_a, col_b = st.columns(2)
             with col_a:
@@ -545,27 +574,7 @@ def show_character_creation_page() -> None:
                 gender = st.selectbox("👥 Genre", ["Homme", "Femme", "Non-binaire"])
                 age = st.number_input("🎂 Âge", min_value=16, max_value=1000, value=25)
 
-            description = st.text_area(
-                "📝 Description physique",
-                placeholder="Ex: Grand elfe aux cheveux argentés, porte une armure en cuir noir ornée de runes...",
-                help="Cette description sera utilisée pour générer le portrait",
-            )
-
             submitted = st.form_submit_button("✨ Créer le personnage")
-
-        # Bouton séparé pour le portrait
-        if st.button("🎨 Générer le portrait"):
-            if name.strip():
-                with st.spinner("🎨 Génération du portrait en cours..."):
-                    portrait_url = generate_portrait(name.strip(), description.strip() if description else None)
-                    if portrait_url:
-                        st.session_state.portrait_url = portrait_url
-                        st.success("✅ Portrait généré avec succès !")
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Échec de génération du portrait. Vous pourrez continuer sans portrait.")
-            else:
-                st.error("Veuillez d'abord saisir un nom pour le personnage.")
 
         if submitted:
             if not all([name.strip(), classe, race]):
@@ -576,13 +585,29 @@ def show_character_creation_page() -> None:
                     portrait_url = st.session_state.get("portrait_url")
                     if not portrait_url:
                         with st.spinner("🎨 Génération automatique du portrait..."):
-                            portrait_url = generate_portrait(
-                                name.strip(),
-                                f"{classe} {race}, {description.strip() if description else 'personnage fantastique'}",
-                            )
+                            # Utiliser TOUTES les informations du personnage pour le portrait
+                            detailed_description = []
+                            
+                            # Informations de base
+                            detailed_description.append(f"{gender} {race} {classe}")
+                            
+                            # Description physique si fournie
+                            if description.strip():
+                                detailed_description.append(description.strip())
+                            
+                            # Détails d'âge
+                            if age < 20:
+                                detailed_description.append("jeune")
+                            elif age > 100:
+                                detailed_description.append("âgé et sage")
+                            
+                            # Prompt complet pour DALL-E
+                            full_description = ", ".join(detailed_description) + ", style art fantastique, haute qualité"
+                            
+                            portrait_url = generate_portrait(name.strip(), full_description)
                             if portrait_url:
                                 st.session_state.portrait_url = portrait_url
-                                st.success("✅ Portrait généré automatiquement !")
+                                st.success("✅ Portrait généré automatiquement avec tous les détails !")
 
                     character_id = create_character(
                         st.session_state.user["id"],
@@ -689,10 +714,6 @@ def show_chatbot_page() -> None:
         if "campaign" in st.session_state and st.session_state.campaign:
             camp = st.session_state.campaign
 
-            # Portrait du MJ en premier s'il existe
-            if camp.get("gm_portrait"):
-                st.image(camp["gm_portrait"], width=200, caption="Maître du Jeu", use_column_width=False)
-
             st.markdown(
                 f"""
             <div class="campaign-info">
@@ -703,6 +724,10 @@ def show_chatbot_page() -> None:
             """,
                 unsafe_allow_html=True,
             )
+            
+            # Portrait du MJ après la carte
+            if camp.get("gm_portrait"):
+                st.image(camp["gm_portrait"], width=200, caption="Maître du Jeu", use_container_width=False)
 
         st.divider()
 
@@ -711,20 +736,20 @@ def show_chatbot_page() -> None:
         if "character" in st.session_state and st.session_state.character:
             char = st.session_state.character
 
-            # Portrait en premier s'il existe
-            if char.get("portrait"):
-                st.image(char["portrait"], width=200, caption=f"Portrait de {char['name']}", use_column_width=False)
-
             st.markdown(
                 f"""
             <div class="character-card">
                 <h4>{char['name']}</h4>
                 <p><strong>{char.get('gender', '')} {char.get('race', '')} {char.get('class', '')}</strong></p>
-                <p><em>{char.get('description', 'Aucune description')}</em></p>
+                <p><em>{char.get('description') if char.get('description') else 'Aucune description'}</em></p>
             </div>
             """,
                 unsafe_allow_html=True,
             )
+            
+            # Portrait après la carte
+            if char.get("portrait"):
+                st.image(char["portrait"], width=200, caption=f"Portrait de {char['name']}", use_container_width=False)
 
     # Navigation principale avec radio buttons
     st.markdown("### 🧭 Navigation")
