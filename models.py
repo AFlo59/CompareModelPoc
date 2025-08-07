@@ -65,26 +65,37 @@ def create_campaign(user_id: int, name: str, themes: List[str], language: str, g
 
 
 def create_character(
-    user_id: int, name: str, classe: str, race: str, description: Optional[str] = None, portrait_url: Optional[str] = None
+    user_id: int, 
+    campaign_id: int,
+    name: str, 
+    classe: str, 
+    race: str, 
+    description: Optional[str] = None, 
+    portrait_url: Optional[str] = None
 ) -> int:
     """
-    Crée un nouveau personnage.
+    Crée un nouveau personnage lié à une campagne spécifique.
 
     Returns:
         ID du personnage créé
     """
-    if not all([user_id, name, classe, race]):
-        raise ValueError("user_id, name, classe et race sont requis")
+    if not all([user_id, campaign_id, name, classe, race]):
+        raise ValueError("user_id, campaign_id, name, classe et race sont requis")
 
     with get_db_connection() as conn:
         c = conn.cursor()
+        # Vérifier que la campagne appartient à l'utilisateur
+        c.execute("SELECT id FROM campaigns WHERE id = ? AND user_id = ?", (campaign_id, user_id))
+        if not c.fetchone():
+            raise ValueError("La campagne spécifiée n'appartient pas à cet utilisateur")
+            
         c.execute(
-            """INSERT INTO characters (user_id, name, class, race, description, portrait_url)
-                     VALUES (?, ?, ?, ?, ?, ?)""",
-            (user_id, name, classe, race, description, portrait_url),
+            """INSERT INTO characters (user_id, campaign_id, name, class, race, description, portrait_url)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, campaign_id, name, classe, race, description, portrait_url),
         )
         character_id = c.lastrowid
-        logger.info(f"Personnage '{name}' créé avec ID {character_id} pour utilisateur {user_id}")
+        logger.info(f"Personnage '{name}' créé avec ID {character_id} pour campagne {campaign_id}")
         return character_id
 
 
@@ -182,15 +193,52 @@ def get_user_characters(user_id: int) -> List[Dict[str, Any]]:
     with get_db_connection() as conn:
         c = conn.cursor()
         c.execute(
-            """SELECT id, name, class, race, description, portrait_url 
+            """SELECT id, campaign_id, name, class, race, description, portrait_url 
                      FROM characters WHERE user_id = ? ORDER BY id DESC""",
             (user_id,),
         )
         rows = c.fetchall()
 
         return [
-            {"id": r[0], "name": r[1], "class": r[2], "race": r[3], "description": r[4], "portrait_url": r[5]} for r in rows
+            {
+                "id": r[0], 
+                "campaign_id": r[1],
+                "name": r[2], 
+                "class": r[3], 
+                "race": r[4], 
+                "description": r[5], 
+                "portrait_url": r[6]
+            } for r in rows
         ]
+
+
+def get_campaign_character(user_id: int, campaign_id: int) -> Optional[Dict[str, Any]]:
+    """Récupère le personnage associé à une campagne spécifique."""
+    if not all([user_id, campaign_id]):
+        return None
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            """SELECT id, name, class, race, description, portrait_url 
+                     FROM characters 
+                     WHERE user_id = ? AND campaign_id = ? 
+                     ORDER BY id DESC LIMIT 1""",
+            (user_id, campaign_id),
+        )
+        row = c.fetchone()
+        
+        if row:
+            return {
+                "id": row[0],
+                "name": row[1],
+                "class": row[2],
+                "race": row[3],
+                "description": row[4],
+                "portrait_url": row[5],
+                "campaign_id": campaign_id
+            }
+        return None
 
 
 def delete_campaign(user_id: int, campaign_id: int) -> bool:

@@ -9,6 +9,7 @@ from database import init_db
 from models import (
     create_campaign,
     create_character,
+    get_campaign_character,
     get_campaign_messages,
     get_user_campaigns,
     get_user_model_choice,
@@ -171,13 +172,22 @@ def show_dashboard_page() -> None:
                     f"🏰 {camp['name']} ({camp.get('message_count', 0)} msg)", key=f"quick_camp_{i}", use_container_width=True
                 ):
                     st.session_state.campaign = camp
+                    # Charger le personnage associé à cette campagne
+                    campaign_character = get_campaign_character(st.session_state.user["id"], camp["id"])
+                    if campaign_character:
+                        st.session_state.character = campaign_character
                     # Charger l'historique
                     try:
                         messages = get_campaign_messages(st.session_state.user["id"], camp["id"])
                         st.session_state.history = messages
                     except:
                         st.session_state.history = []
-                    st.session_state.page = "chatbot"
+                    
+                    # Redirection appropriée
+                    if not campaign_character:
+                        st.session_state.page = "character"  # Créer un personnage d'abord
+                    else:
+                        st.session_state.page = "chatbot"
                     st.rerun()
 
             # Bouton pour voir toutes les campagnes s'il y en a plus de 5
@@ -409,6 +419,11 @@ def show_campaign_or_resume_page() -> None:
                         # Charger la campagne et son historique
                         st.session_state.campaign = campaign
 
+                        # Charger le personnage associé à cette campagne
+                        campaign_character = get_campaign_character(st.session_state.user["id"], campaign["id"])
+                        if campaign_character:
+                            st.session_state.character = campaign_character
+
                         # Charger l'historique des messages de cette campagne
                         try:
                             messages = get_campaign_messages(st.session_state.user["id"], campaign["id"])
@@ -418,11 +433,13 @@ def show_campaign_or_resume_page() -> None:
                             st.error(f"Erreur lors du chargement: {e}")
                             st.session_state.history = []
 
-                        # Aller directement au chatbot si on a déjà des messages
-                        if st.session_state.history:
+                        # Aller à la création de personnage si aucun personnage n'existe
+                        if not campaign_character:
+                            st.session_state.page = "character"
+                        elif st.session_state.history:
                             st.session_state.page = "chatbot"
                         else:
-                            st.session_state.page = "character"
+                            st.session_state.page = "chatbot"  # Aller au chatbot même sans historique
                         st.rerun()
                 with col3:
                     if st.button(f"🗑️ Supprimer", key=f"delete_{i}", use_container_width=True):
@@ -441,6 +458,16 @@ def show_campaign_creation_page() -> None:
     """Affiche la page de création de campagne."""
     if not require_auth():
         return
+
+    # Nettoyer les données de personnage précédent pour une nouvelle campagne
+    if "character" in st.session_state:
+        del st.session_state["character"]
+    if "portrait_url" in st.session_state:
+        del st.session_state["portrait_url"]
+    if "temp_name" in st.session_state:
+        del st.session_state["temp_name"]
+    if "temp_description" in st.session_state:
+        del st.session_state["temp_description"]
 
     st.title("📌 Créez votre Campagne")
 
@@ -521,11 +548,60 @@ def show_character_creation_page() -> None:
     if not require_auth():
         return
 
-    st.title("🧙 Créez votre Personnage")
+    # Vérifier qu'on a une campagne active
+    if "campaign" not in st.session_state or not st.session_state.campaign:
+        st.error("❌ Aucune campagne active. Veuillez d'abord créer ou sélectionner une campagne.")
+        if st.button("🏠 Retour au tableau de bord"):
+            st.session_state.page = "dashboard"
+            st.rerun()
+        return
+
+    campaign = st.session_state.campaign
+    
+    # Vérifier si un personnage existe déjà pour cette campagne
+    existing_character = get_campaign_character(st.session_state.user["id"], campaign["id"])
+    if existing_character:
+        st.warning(f"⚠️ Un personnage existe déjà pour cette campagne : **{existing_character['name']}**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🎮 Jouer avec ce personnage"):
+                st.session_state.character = existing_character
+                st.session_state.page = "chatbot"
+                st.rerun()
+        with col2:
+            if st.button("🆕 Créer un nouveau personnage"):
+                # Effacer le personnage existant de la session pour en créer un nouveau
+                if "character" in st.session_state:
+                    del st.session_state["character"]
+                # Continuer avec la création
+                pass
+        with col3:
+            if st.button("🏠 Retour au tableau de bord"):
+                st.session_state.page = "dashboard"
+                st.rerun()
+                
+        # Si on choisit de créer un nouveau personnage, continuer
+        if "character" in st.session_state:
+            return
+
+    st.title(f"🧙 Créez votre Personnage pour '{campaign['name']}'")
 
     # Bouton retour au dashboard
     if st.button("🏠 Retour au tableau de bord"):
         st.session_state.page = "dashboard"
+        st.rerun()
+
+    # Bouton pour créer un nouveau personnage (nettoyer les données précédentes)
+    if st.button("🆕 Nouveau personnage", help="Efface les données du personnage précédent"):
+        if "character" in st.session_state:
+            del st.session_state["character"]
+        if "portrait_url" in st.session_state:
+            del st.session_state["portrait_url"]
+        if "temp_name" in st.session_state:
+            del st.session_state["temp_name"]
+        if "temp_description" in st.session_state:
+            del st.session_state["temp_description"]
+        st.success("✅ Données nettoyées ! Vous pouvez créer un nouveau personnage.")
         st.rerun()
 
     st.divider()
@@ -551,8 +627,7 @@ def show_character_creation_page() -> None:
         # Bouton pour générer le portrait (maintenant accessible)
         if st.button("🎨 Générer le portrait"):
             if st.session_state.temp_name.strip():
-                # Attendre que toutes les infos soient disponibles pour générer avec tous les détails
-                st.info("ℹ️ Pour un portrait optimal, veuillez d'abord compléter le formulaire ci-dessous (classe, race, genre) puis valider. Le portrait sera généré automatiquement avec tous les détails.")
+                st.warning("⚠️ Pour générer le portrait avec tous les détails (classe, race, genre), veuillez d'abord sélectionner ces options dans le formulaire ci-dessous, puis cliquer à nouveau sur ce bouton.")
             else:
                 st.error("Veuillez d'abord saisir un nom pour le personnage.")
 
@@ -574,7 +649,47 @@ def show_character_creation_page() -> None:
                 gender = st.selectbox("👥 Genre", ["Homme", "Femme", "Non-binaire"])
                 age = st.number_input("🎂 Âge", min_value=16, max_value=1000, value=25)
 
-            submitted = st.form_submit_button("✨ Créer le personnage")
+            # Bouton pour générer le portrait avec les infos du formulaire
+            col_portrait, col_create = st.columns(2)
+            with col_portrait:
+                generate_portrait_btn = st.form_submit_button("🎨 Générer le portrait avec ces infos")
+            with col_create:
+                submitted = st.form_submit_button("✨ Créer le personnage")
+
+        # Gérer la génération de portrait avec les infos du formulaire
+        if generate_portrait_btn:
+            if not all([name.strip(), classe, race]):
+                st.error("Les champs nom, classe et race sont obligatoires pour générer le portrait.")
+            else:
+                with st.spinner("🎨 Génération du portrait en cours..."):
+                    # Utiliser TOUTES les informations du personnage pour le portrait
+                    detailed_description = []
+                    
+                    # Informations de base
+                    detailed_description.append(f"{gender} {race} {classe}")
+                    
+                    # Description physique si fournie
+                    if description.strip():
+                        detailed_description.append(description.strip())
+                    
+                    # Détails d'âge
+                    if age < 20:
+                        detailed_description.append("jeune")
+                    elif age > 100:
+                        detailed_description.append("âgé et sage")
+                    
+                    # Prompt complet pour DALL-E
+                    full_description = ", ".join(detailed_description) + ", style art fantastique, haute qualité"
+                    
+                    portrait_url = generate_portrait(name.strip(), full_description)
+                    if portrait_url:
+                        st.session_state.portrait_url = portrait_url
+                        st.success("✅ Portrait généré avec succès avec tous les détails !")
+                        st.rerun()
+                    else:
+                        st.error("❌ Échec de génération du portrait. Vérifiez votre connexion.")
+
+        # Gérer la création du personnage
 
         if submitted:
             if not all([name.strip(), classe, race]):
@@ -611,6 +726,7 @@ def show_character_creation_page() -> None:
 
                     character_id = create_character(
                         st.session_state.user["id"],
+                        campaign["id"],  # Ajouter l'ID de la campagne
                         name.strip(),
                         classe,
                         race,
@@ -620,6 +736,7 @@ def show_character_creation_page() -> None:
 
                     st.session_state.character = {
                         "id": character_id,
+                        "campaign_id": campaign["id"],
                         "name": name.strip(),
                         "class": classe,
                         "race": race,

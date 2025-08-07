@@ -49,17 +49,19 @@ def init_db():
         )"""
         )
 
-        # Personnages
+        # Personnages liés aux campagnes
         c.execute(
             """CREATE TABLE IF NOT EXISTS characters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
+            campaign_id INTEGER,
             name TEXT,
             class TEXT,
             race TEXT,
             description TEXT,
             portrait_url TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id)
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
         )"""
         )
 
@@ -102,6 +104,15 @@ def init_db():
         # Migration : ajouter gm_portrait à campaigns si elle n'existe pas
         try:
             c.execute("ALTER TABLE campaigns ADD COLUMN gm_portrait TEXT")
+            conn.commit()
+        except sqlite3.OperationalError:
+            # La colonne existe déjà
+            pass
+
+        # Migration : ajouter campaign_id à characters si elle n'existe pas
+        try:
+            c.execute("ALTER TABLE characters ADD COLUMN campaign_id INTEGER")
+            c.execute("CREATE INDEX IF NOT EXISTS idx_characters_campaign ON characters(campaign_id)")
             conn.commit()
         except sqlite3.OperationalError:
             # La colonne existe déjà
