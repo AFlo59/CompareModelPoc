@@ -22,7 +22,7 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 127
-known_first_party = ["auth", "chatbot", "database", "models", "performance", "portraits"]
+known_first_party = ["auth", "chatbot", "database", "models", "performance", "portraits", "system_monitoring"]
 
 [tool.mypy]
 python_version = "3.10"
