@@ -1,19 +1,22 @@
-import streamlit as st
-import time
 import logging
-from typing import List, Dict, Any, Optional
-from database import get_connection
-from models import get_user_campaigns, get_campaign_messages
-from openai import OpenAI
-import anthropic
 import os
+import time
+from typing import Any, Dict, List, Optional
+
+import anthropic
+import streamlit as st
 from dotenv import load_dotenv
+from openai import OpenAI
+
+from database import get_connection
+from models import get_campaign_messages, get_user_campaigns
 
 load_dotenv()
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # Configuration des clients API
 def get_openai_client() -> OpenAI:
@@ -23,12 +26,14 @@ def get_openai_client() -> OpenAI:
         raise ValueError("OPENAI_API_KEY manquante")
     return OpenAI(api_key=api_key)
 
+
 def get_anthropic_client() -> anthropic.Anthropic:
     """Initialise et retourne un client Anthropic."""
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY manquante")
     return anthropic.Anthropic(api_key=api_key)
+
 
 def get_last_model(user_id: int) -> str:
     """Récupère le dernier modèle choisi par l'utilisateur."""
@@ -41,6 +46,7 @@ def get_last_model(user_id: int) -> str:
     finally:
         conn.close()
 
+
 def get_previous_history(user_id: int) -> List[Dict[str, str]]:
     """Récupère l'historique des messages depuis la base de données."""
     conn = get_connection()
@@ -52,34 +58,44 @@ def get_previous_history(user_id: int) -> List[Dict[str, str]]:
     finally:
         conn.close()
 
+
 def store_message(user_id: int, role: str, content: str, campaign_id: int = None) -> None:
     """Stocke un message dans la base de données."""
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)", 
-                  (user_id, role, content, campaign_id))
+        c.execute(
+            "INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)",
+            (user_id, role, content, campaign_id),
+        )
         conn.commit()
     finally:
         conn.close()
 
-def store_performance(user_id: int, model: str, latency: float, tokens_in: int, tokens_out: int, campaign_id: int = None) -> None:
+
+def store_performance(
+    user_id: int, model: str, latency: float, tokens_in: int, tokens_out: int, campaign_id: int = None
+) -> None:
     """Stocke les données de performance dans la base de données."""
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute("""
+        c.execute(
+            """
             INSERT INTO performance_logs (user_id, model, latency, tokens_in, tokens_out, campaign_id) 
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, model, latency, tokens_in, tokens_out, campaign_id))
+        """,
+            (user_id, model, latency, tokens_in, tokens_out, campaign_id),
+        )
         conn.commit()
     finally:
         conn.close()
 
+
 def call_ai_model(model: str, messages: List[Dict[str, str]], temperature: float = 0.8) -> Dict[str, Any]:
     """
     Appelle le modèle d'IA approprié selon le nom du modèle.
-    
+
     Returns:
         Dict contenant 'content', 'tokens_in', 'tokens_out'
     """
@@ -87,15 +103,12 @@ def call_ai_model(model: str, messages: List[Dict[str, str]], temperature: float
         if model.startswith("GPT-4"):
             client = get_openai_client()
             response = client.chat.completions.create(
-                model="gpt-4" if model == "GPT-4" else "gpt-4o",
-                messages=messages,
-                temperature=temperature,
-                max_tokens=1000
+                model="gpt-4" if model == "GPT-4" else "gpt-4o", messages=messages, temperature=temperature, max_tokens=1000
             )
             return {
-                'content': response.choices[0].message.content,
-                'tokens_in': response.usage.prompt_tokens,
-                'tokens_out': response.usage.completion_tokens
+                "content": response.choices[0].message.content,
+                "tokens_in": response.usage.prompt_tokens,
+                "tokens_out": response.usage.completion_tokens,
             }
         elif model == "Claude 3.5 Sonnet":
             client = get_anthropic_client()
@@ -107,66 +120,66 @@ def call_ai_model(model: str, messages: List[Dict[str, str]], temperature: float
                     system_msg = msg["content"]
                 else:
                     user_messages.append(msg)
-            
+
             # S'assurer qu'il y a au moins un message utilisateur
             if not user_messages:
                 user_messages = [{"role": "user", "content": "Commençons l'aventure !"}]
-                    
+
             response = client.messages.create(
                 model="claude-3-5-sonnet-20240620",
                 max_tokens=1000,
                 temperature=temperature,
                 system=system_msg if system_msg else "Tu es un assistant IA.",
-                messages=user_messages
+                messages=user_messages,
             )
             return {
-                'content': response.content[0].text,
-                'tokens_in': response.usage.input_tokens,
-                'tokens_out': response.usage.output_tokens
+                "content": response.content[0].text,
+                "tokens_in": response.usage.input_tokens,
+                "tokens_out": response.usage.output_tokens,
             }
         else:
             # Fallback vers GPT-4 pour modèles non supportés
             logger.warning(f"Modèle {model} non supporté, utilisation de GPT-4")
             client = get_openai_client()
             response = client.chat.completions.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=temperature,
-                max_tokens=1000
+                model="gpt-4", messages=messages, temperature=temperature, max_tokens=1000
             )
             return {
-                'content': response.choices[0].message.content,
-                'tokens_in': response.usage.prompt_tokens,
-                'tokens_out': response.usage.completion_tokens
+                "content": response.choices[0].message.content,
+                "tokens_in": response.usage.prompt_tokens,
+                "tokens_out": response.usage.completion_tokens,
             }
     except Exception as e:
         logger.error(f"Erreur avec le modèle {model}: {e}")
         raise
 
+
 def launch_chat_interface(user_id: int) -> None:
     """Lance l'interface de chat principal."""
     st.title("🎲 Donjons & Dragons - Chatbot")
     model = get_last_model(user_id)
-    
+
     # Récupérer l'ID de la campagne actuelle
     campaign_id = st.session_state.get("campaign", {}).get("id")
-    
+
     # Affichage du modèle actuel
     st.info(f"🤖 Modèle actuel: **{model}**")
 
     # Si on a un historique de campagne déjà chargé, on l'utilise
     # Sinon on va chercher l'historique dans la DB
-    if 'history' not in st.session_state:
+    if "history" not in st.session_state:
         if campaign_id:
             # Charger l'historique spécifique à cette campagne
             st.session_state.history = get_campaign_messages(user_id, campaign_id)
         else:
             # Fallback vers l'ancien système pour la compatibilité
             st.session_state.history = get_previous_history(user_id)
-            
+
         if st.session_state.history:
             with st.chat_message("assistant"):
-                st.markdown("_Bienvenue de retour. Voici un rappel de votre session précédente. Reprenez quand vous êtes prêt !_")
+                st.markdown(
+                    "_Bienvenue de retour. Voici un rappel de votre session précédente. Reprenez quand vous êtes prêt !_"
+                )
 
     # Bouton pour réinitialiser la session
     if st.button("🔄 Recommencer une nouvelle aventure"):
@@ -204,10 +217,10 @@ Personnage Joueur :
 
 Ta mission : démarrer l'aventure directement par une scène narrative qui capte l'attention. Pose une situation intrigante, un décor vivant, et invite le joueur à réagir. Tu ne donnes pas d'option multiple, tu attends simplement sa réponse roleplay.
         """
-        
+
         # Ajouter le message système
         st.session_state.history.append({"role": "system", "content": system_prompt})
-        
+
         # Pour Claude, nous devons ajouter un message utilisateur initial
         initial_user_message = "Commençons l'aventure !"
         st.session_state.history.append({"role": "user", "content": initial_user_message})
@@ -217,16 +230,22 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
                 t0 = time.time()
                 ai_response = call_ai_model(model, st.session_state.history, temperature=0.9)
                 latency = time.time() - t0
-                
-                intro_msg = ai_response['content']
-                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'], 
-                                 st.session_state.get('campaign', {}).get('id'))
-                
+
+                intro_msg = ai_response["content"]
+                store_performance(
+                    user_id,
+                    model,
+                    latency,
+                    ai_response["tokens_in"],
+                    ai_response["tokens_out"],
+                    st.session_state.get("campaign", {}).get("id"),
+                )
+
                 st.session_state.history.append({"role": "assistant", "content": intro_msg})
                 store_message(user_id, "system", system_prompt, campaign_id)
                 store_message(user_id, "user", initial_user_message, campaign_id)
                 store_message(user_id, "assistant", intro_msg, campaign_id)
-                
+
                 logger.info(f"Session initialisée pour utilisateur {user_id} avec {model}")
             except Exception as e:
                 st.error(f"Erreur lors de l'initialisation: {e}")
@@ -250,11 +269,17 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
                 t0 = time.time()
                 ai_response = call_ai_model(model, st.session_state.history, temperature=0.8)
                 latency = time.time() - t0
-                
-                reply = ai_response['content']
-                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'], 
-                                 st.session_state.get('campaign', {}).get('id'))
-                
+
+                reply = ai_response["content"]
+                store_performance(
+                    user_id,
+                    model,
+                    latency,
+                    ai_response["tokens_in"],
+                    ai_response["tokens_out"],
+                    st.session_state.get("campaign", {}).get("id"),
+                )
+
                 logger.info(f"Réponse générée en {latency:.2f}s avec {model}")
             except Exception as e:
                 reply = f"Erreur technique : {str(e)}"

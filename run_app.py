@@ -4,9 +4,7 @@ import sys
 from pathlib import Path
 
 # Vérification des fichiers essentiels
-required_files = [
-    "app.py", "database.py", "auth.py", "models.py", "chatbot.py", "portraits.py", "performance.py", ".env"
-]
+required_files = ["app.py", "database.py", "auth.py", "models.py", "chatbot.py", "portraits.py", "performance.py", ".env"]
 
 missing_files = [f for f in required_files if not Path(f).exists()]
 if missing_files:
@@ -15,6 +13,7 @@ if missing_files:
 
 # Vérification des variables d'environnement
 from dotenv import load_dotenv
+
 load_dotenv()
 
 openai_key = os.getenv("OPENAI_API_KEY")
