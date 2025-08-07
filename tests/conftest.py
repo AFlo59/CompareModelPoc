@@ -1,6 +1,7 @@
 """
 Configuration globale pour les tests pytest.
 """
+
 import os
 import sys
 import tempfile

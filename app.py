@@ -655,10 +655,12 @@ def show_chatbot_page() -> None:
                 selected_campaign_name = st.selectbox(
                     "📚 Campagnes rapides :",
                     options=list(campaign_options.keys()),
-                    index=0
-                    if not current_campaign_id
-                    else next(
-                        (i for i, (_, camp) in enumerate(campaign_options.items()) if camp["id"] == current_campaign_id), 0
+                    index=(
+                        0
+                        if not current_campaign_id
+                        else next(
+                            (i for i, (_, camp) in enumerate(campaign_options.items()) if camp["id"] == current_campaign_id), 0
+                        )
                     ),
                     help="Changement rapide de campagne",
                 )

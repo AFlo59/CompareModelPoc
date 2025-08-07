@@ -251,7 +251,9 @@ def show_system_monitoring():
 
     with col2:
         st.metric(
-            "🧠 RAM", f"{memory_stats['memory_percent']:.1f}%", delta=f"-{format_bytes(memory_stats['memory_available'])} libre"
+            "🧠 RAM",
+            f"{memory_stats['memory_percent']:.1f}%",
+            delta=f"-{format_bytes(memory_stats['memory_available'])} libre",
         )
 
     with col3:

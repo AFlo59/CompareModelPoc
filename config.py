@@ -1,6 +1,7 @@
 """
 Configuration centralisée de l'application.
 """
+
 import os
 from typing import Any, Dict
 
