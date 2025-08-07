@@ -29,6 +29,50 @@ Une application Streamlit innovante qui permet de comparer les performances de d
 - Python 3.8 ou supérieur
 - Clés API pour les services que vous souhaitez utiliser :
   - OpenAI API Key (pour GPT-4, GPT-4o, DALL-E)
+  - Anthropic API Key (pour Claude 3.5 Sonnet)
+  - DeepSeek API Key (optionnel)
+
+### Installation locale
+
+1. **Cloner le repository :**
+```bash
+git clone https://github.com/AFlo59/CompareModelPoc.git
+cd CompareModelPoc
+```
+
+2. **Créer un environnement virtuel :**
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate  # Windows
+```
+
+3. **Installer les dépendances :**
+```bash
+pip install -r requirements.txt
+```
+
+4. **Configurer les variables d'environnement :**
+```bash
+cp .env.example .env
+# Éditer .env avec vos vraies clés API
+```
+
+5. **Lancer l'application :**
+```bash
+streamlit run app.py
+```
+
+### Configuration des secrets GitHub (pour CI/CD)
+
+Pour que les tests automatisés fonctionnent, ajoutez ces secrets dans votre repository GitHub :
+
+1. Allez dans **Settings** → **Secrets and variables** → **Actions**
+2. Ajoutez ces secrets :
+   - `OPENAI_API_KEY` : Votre clé API OpenAI
+   - `ANTHROPIC_API_KEY` : Votre clé API Anthropic  
+   - `DEEPSEEK_API_KEY` : Votre clé API DeepSeek (optionnel)
   - Anthropic API Key (pour Claude)
   - DeepSeek API Key (optionnel)
 

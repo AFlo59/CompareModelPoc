@@ -10,7 +10,9 @@ from models import (
     create_campaign, 
     create_character, 
     get_user_campaigns,
-    get_user_characters
+    get_user_characters,
+    get_user_model_choice,
+    get_campaign_messages
 )
 
 
@@ -44,15 +46,16 @@ class TestDatabaseModels:
             save_model_choice(1, "")
 
     def test_create_campaign(self, sample_user):
-        """Test de création de campagne."""
+        """Test de création de campagne avec portrait MJ."""
         user_id = sample_user["id"]
         
-        # Créer une campagne
+        # Créer une campagne avec portrait MJ
         campaign_id = create_campaign(
             user_id, 
             "Test Campaign", 
             ["Fantasy", "Adventure"], 
-            "fr"
+            "fr",
+            "https://example.com/gm_portrait.jpg"
         )
         
         # Vérifier la création
@@ -63,7 +66,7 @@ class TestDatabaseModels:
         from database import get_connection
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, themes, language FROM campaigns WHERE id = ?", 
+        cursor.execute("SELECT name, themes, language, gm_portrait FROM campaigns WHERE id = ?", 
                       (campaign_id,))
         result = cursor.fetchone()
         conn.close()
@@ -72,6 +75,7 @@ class TestDatabaseModels:
         assert result[0] == "Test Campaign"
         assert "Fantasy" in result[1]
         assert result[2] == "fr"
+        assert result[3] == "https://example.com/gm_portrait.jpg"
 
     def test_create_character(self, sample_user):
         """Test de création de personnage."""
@@ -108,12 +112,12 @@ class TestDatabaseModels:
         assert result[4] == "http://example.com/portrait.jpg"
 
     def test_get_user_campaigns(self, sample_user):
-        """Test de récupération des campagnes utilisateur."""
+        """Test de récupération des campagnes utilisateur avec portraits."""
         user_id = sample_user["id"]
         
-        # Créer plusieurs campagnes
-        campaign_id_1 = create_campaign(user_id, "Campaign 1", ["Fantasy"], "fr")
-        campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en")
+        # Créer plusieurs campagnes avec portraits
+        campaign_id_1 = create_campaign(user_id, "Campaign 1", ["Fantasy"], "fr", "https://example.com/gm1.jpg")
+        campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en", "https://example.com/gm2.jpg")
         
         # Récupérer les campagnes
         campaigns = get_user_campaigns(user_id)
@@ -124,6 +128,10 @@ class TestDatabaseModels:
         assert campaigns[1]["name"] == "Campaign 1"
         assert campaigns[0]["themes"] == ["Sci-Fi"]
         assert campaigns[1]["themes"] == ["Fantasy"]
+        assert campaigns[0]["gm_portrait"] == "https://example.com/gm2.jpg"
+        assert campaigns[1]["gm_portrait"] == "https://example.com/gm1.jpg"
+        assert "message_count" in campaigns[0]
+        assert "last_activity" in campaigns[0]
 
     def test_get_user_characters(self, sample_user):
         """Test de récupération des personnages utilisateur."""
@@ -173,6 +181,92 @@ class TestDatabaseModels:
         
         with pytest.raises(ValueError):
             create_character(1, "Test", "Guerrier", "")
+
+
+    def test_get_user_model_choice(self, sample_user):
+        """Test de récupération du choix de modèle utilisateur."""
+        user_id = sample_user["id"]
+        
+        # Aucun modèle sauvegardé
+        result = get_user_model_choice(user_id)
+        assert result is None
+        
+        # Sauvegarder un modèle
+        save_model_choice(user_id, "Claude 3.5 Sonnet")
+        
+        # Vérifier la récupération
+        result = get_user_model_choice(user_id)
+        assert result == "Claude 3.5 Sonnet"
+
+    def test_get_campaign_messages(self, sample_user):
+        """Test de récupération des messages par campagne."""
+        user_id = sample_user["id"]
+        
+        # Créer deux campagnes
+        campaign_id_1 = create_campaign(user_id, "Campaign 1", ["Fantasy"], "fr")
+        campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en")
+        
+        # Ajouter des messages à la première campagne
+        from database import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)",
+                      (user_id, "user", "Bonjour", campaign_id_1))
+        cursor.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)",
+                      (user_id, "assistant", "Salut !", campaign_id_1))
+        
+        # Ajouter un message à la deuxième campagne
+        cursor.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)",
+                      (user_id, "user", "Hello", campaign_id_2))
+        conn.commit()
+        conn.close()
+        
+        # Récupérer les messages de la première campagne
+        messages_1 = get_campaign_messages(user_id, campaign_id_1)
+        assert len(messages_1) == 2
+        assert messages_1[0]["content"] == "Bonjour"
+        assert messages_1[1]["content"] == "Salut !"
+        
+        # Récupérer les messages de la deuxième campagne
+        messages_2 = get_campaign_messages(user_id, campaign_id_2)
+        assert len(messages_2) == 1
+        assert messages_2[0]["content"] == "Hello"
+
+    def test_get_campaign_messages_no_campaign(self, sample_user):
+        """Test de récupération des messages sans campagne spécifiée."""
+        user_id = sample_user["id"]
+        
+        # Aucune campagne existante
+        messages = get_campaign_messages(user_id)
+        assert messages == []
+        
+        # Créer une campagne et des messages
+        campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
+        
+        from database import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)",
+                      (user_id, "user", "Test message", campaign_id))
+        conn.commit()
+        conn.close()
+        
+        # Récupérer sans spécifier la campagne (doit prendre la plus récente)
+        messages = get_campaign_messages(user_id)
+        assert len(messages) == 1
+        assert messages[0]["content"] == "Test message"
+
+    def test_campaign_with_no_portrait(self, sample_user):
+        """Test de création de campagne sans portrait."""
+        user_id = sample_user["id"]
+        
+        # Créer une campagne sans portrait
+        campaign_id = create_campaign(user_id, "No Portrait Campaign", ["Fantasy"], "fr")
+        
+        # Récupérer et vérifier
+        campaigns = get_user_campaigns(user_id)
+        assert len(campaigns) == 1
+        assert campaigns[0]["gm_portrait"] is None
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ if not openai_key:
 # Lancement de l'application Streamlit
 try:
     print("✅ Démarrage de l'application Streamlit...")
-    subprocess.run(["streamlit", "run", "app.py"])
+    # Utilisation de python au lieu de python3 pour plus de compatibilité
+    subprocess.run([sys.executable, "-m", "streamlit", "run", "app.py"])
 except FileNotFoundError:
     print("❌ Streamlit n'est pas installé. Lancez `pip install -r requirements.txt`.")

@@ -197,7 +197,9 @@ def show_performance_charts(df: pd.DataFrame) -> None:
 
 def show_performance(user_id: int) -> None:
     """Interface principale d'affichage des performances."""
-    st.title("📊 Performances des Modèles")
+    st.title("📊 Performances Globales des Modèles")
+    
+    st.info("📈 **Vue d'ensemble** - Ces statistiques incluent toutes vos interactions avec l'IA, toutes campagnes confondues.")
     
     # Sélecteur de période
     col1, col2 = st.columns([3, 1])

@@ -3,7 +3,7 @@ import time
 import logging
 from typing import List, Dict, Any, Optional
 from database import get_connection
-from models import get_user_campaigns
+from models import get_user_campaigns, get_campaign_messages
 from openai import OpenAI
 import anthropic
 import os
@@ -52,23 +52,26 @@ def get_previous_history(user_id: int) -> List[Dict[str, str]]:
     finally:
         conn.close()
 
-def store_message(user_id: int, role: str, content: str) -> None:
+def store_message(user_id: int, role: str, content: str, campaign_id: int = None) -> None:
     """Stocke un message dans la base de données."""
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute("INSERT INTO messages (user_id, role, content) VALUES (?, ?, ?)", (user_id, role, content))
+        c.execute("INSERT INTO messages (user_id, role, content, campaign_id) VALUES (?, ?, ?, ?)", 
+                  (user_id, role, content, campaign_id))
         conn.commit()
     finally:
         conn.close()
 
-def store_performance(user_id: int, model: str, latency: float, tokens_in: int, tokens_out: int) -> None:
+def store_performance(user_id: int, model: str, latency: float, tokens_in: int, tokens_out: int, campaign_id: int = None) -> None:
     """Stocke les données de performance dans la base de données."""
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute("INSERT INTO performance_logs (user_id, model, latency, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)",
-                  (user_id, model, latency, tokens_in, tokens_out))
+        c.execute("""
+            INSERT INTO performance_logs (user_id, model, latency, tokens_in, tokens_out, campaign_id) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, model, latency, tokens_in, tokens_out, campaign_id))
         conn.commit()
     finally:
         conn.close()
@@ -145,12 +148,22 @@ def launch_chat_interface(user_id: int) -> None:
     st.title("🎲 Donjons & Dragons - Chatbot")
     model = get_last_model(user_id)
     
+    # Récupérer l'ID de la campagne actuelle
+    campaign_id = st.session_state.get("campaign", {}).get("id")
+    
     # Affichage du modèle actuel
     st.info(f"🤖 Modèle actuel: **{model}**")
 
+    # Si on a un historique de campagne déjà chargé, on l'utilise
+    # Sinon on va chercher l'historique dans la DB
     if 'history' not in st.session_state:
-        # Si pas d'historique en mémoire, on le récupère depuis la DB
-        st.session_state.history = get_previous_history(user_id)
+        if campaign_id:
+            # Charger l'historique spécifique à cette campagne
+            st.session_state.history = get_campaign_messages(user_id, campaign_id)
+        else:
+            # Fallback vers l'ancien système pour la compatibilité
+            st.session_state.history = get_previous_history(user_id)
+            
         if st.session_state.history:
             with st.chat_message("assistant"):
                 st.markdown("_Bienvenue de retour. Voici un rappel de votre session précédente. Reprenez quand vous êtes prêt !_")
@@ -160,7 +173,10 @@ def launch_chat_interface(user_id: int) -> None:
         st.session_state.history = []
         conn = get_connection()
         try:
-            conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
+            if campaign_id:
+                conn.execute("DELETE FROM messages WHERE user_id = ? AND campaign_id = ?", (user_id, campaign_id))
+            else:
+                conn.execute("DELETE FROM messages WHERE user_id = ?", (user_id,))
             conn.commit()
         finally:
             conn.close()
@@ -203,12 +219,13 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
                 latency = time.time() - t0
                 
                 intro_msg = ai_response['content']
-                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'])
+                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'], 
+                                 st.session_state.get('campaign', {}).get('id'))
                 
                 st.session_state.history.append({"role": "assistant", "content": intro_msg})
-                store_message(user_id, "system", system_prompt)
-                store_message(user_id, "user", initial_user_message)
-                store_message(user_id, "assistant", intro_msg)
+                store_message(user_id, "system", system_prompt, campaign_id)
+                store_message(user_id, "user", initial_user_message, campaign_id)
+                store_message(user_id, "assistant", intro_msg, campaign_id)
                 
                 logger.info(f"Session initialisée pour utilisateur {user_id} avec {model}")
             except Exception as e:
@@ -226,7 +243,7 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
         with st.chat_message("user"):
             st.markdown(prompt)
         st.session_state.history.append({"role": "user", "content": prompt})
-        store_message(user_id, "user", prompt)
+        store_message(user_id, "user", prompt, campaign_id)
 
         with st.spinner("Réponse du MJ..."):
             try:
@@ -235,7 +252,8 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
                 latency = time.time() - t0
                 
                 reply = ai_response['content']
-                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'])
+                store_performance(user_id, model, latency, ai_response['tokens_in'], ai_response['tokens_out'], 
+                                 st.session_state.get('campaign', {}).get('id'))
                 
                 logger.info(f"Réponse générée en {latency:.2f}s avec {model}")
             except Exception as e:
@@ -245,4 +263,4 @@ Ta mission : démarrer l'aventure directement par une scène narrative qui capte
         with st.chat_message("assistant"):
             st.markdown(reply)
         st.session_state.history.append({"role": "assistant", "content": reply})
-        store_message(user_id, "assistant", reply)
+        store_message(user_id, "assistant", reply, campaign_id)
