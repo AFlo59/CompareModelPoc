@@ -196,7 +196,21 @@ def show_performance_charts(df: pd.DataFrame) -> None:
             st.plotly_chart(fig_tokens_time, use_container_width=True)
 
 def show_performance(user_id: int) -> None:
-    """Interface principale d'affichage des performances."""
+    """Affiche les performances des modèles avec onglets pour différentes vues."""
+    st.title("📊 Analyse des Performances")
+    
+    # Onglets principaux
+    tab1, tab2 = st.tabs(["🤖 Performances IA", "🖥️ Monitoring Système"])
+    
+    with tab1:
+        show_ai_performance(user_id)
+    
+    with tab2:
+        from system_monitoring import show_system_monitoring
+        show_system_monitoring()
+
+def show_ai_performance(user_id: int) -> None:
+    """Affiche les performances des modèles IA."""
     st.title("📊 Performances Globales des Modèles")
     
     st.info("📈 **Vue d'ensemble** - Ces statistiques incluent toutes vos interactions avec l'IA, toutes campagnes confondues.")
