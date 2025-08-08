@@ -23,7 +23,7 @@ def test_db():
     # Patcher le chemin de la DB avant d'importer les modules
     original_db_path = None
     try:
-        import database
+        from src.data import database
 
         original_db_path = database.DB_PATH
         database.DB_PATH = Path(test_db_file.name)
@@ -48,29 +48,27 @@ def test_db():
 @pytest.fixture
 def clean_db(test_db):
     """Fixture pour nettoyer la base de données entre les tests."""
-    from database import get_connection
+    from src.data.database import get_connection
 
     # Nettoyer toutes les tables avant le test
-    conn = get_connection()
-    cursor = conn.cursor()
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-    # Supprimer toutes les données
-    tables = ["performance_logs", "messages", "characters", "campaigns", "model_choices", "users"]
-    for table in tables:
-        cursor.execute(f"DELETE FROM {table}")
+        # Supprimer toutes les données
+        tables = ["performance_logs", "messages", "characters", "campaigns", "model_choices", "users"]
+        for table in tables:
+            cursor.execute(f"DELETE FROM {table}")
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
     yield
 
     # Optionnel: nettoyer après le test aussi
-    conn = get_connection()
-    cursor = conn.cursor()
-    for table in tables:
-        cursor.execute(f"DELETE FROM {table}")
-    conn.commit()
-    conn.close()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        for table in tables:
+            cursor.execute(f"DELETE FROM {table}")
+        conn.commit()
 
 
 @pytest.fixture
@@ -78,15 +76,14 @@ def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
     import bcrypt
 
-    from database import get_connection
+    from src.data.database import get_connection
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-    hashed_password = bcrypt.hashpw("testpassword123".encode("utf-8"), bcrypt.gensalt())
-    cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", ("test@example.com", hashed_password))
-    user_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+        hashed_password = bcrypt.hashpw("testpassword123".encode("utf-8"), bcrypt.gensalt())
+        cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", ("test@example.com", hashed_password))
+        user_id = cursor.lastrowid
+        conn.commit()
 
     return {"id": user_id, "email": "test@example.com"}

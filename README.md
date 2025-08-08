@@ -15,13 +15,16 @@ Une application Streamlit innovante qui permet de comparer les performances de d
 - **DeepSeek** : Le plus économique, bon rapport qualité/prix
 
 ### ⚡ Fonctionnalités Clés
-- 🔐 **Authentification sécurisée** avec validation des mots de passe
-- 🎭 **Création de personnages** avec génération de portraits IA
+- 🔐 **Authentification renforcée** avec protection force brute & session timeout
+- 🎭 **Création de personnages** avec génération de portraits IA optimisée
 - 📚 **Gestion de campagnes** multi-thèmes et multi-langues
 - 💬 **Interface de chat** immersive avec historique persistant
-- 📊 **Analyse de performances** avec graphiques interactifs
-- 🎨 **Génération de portraits** via DALL-E 3
+- 📊 **Analyse de performances** avec graphiques interactifs temps réel
+- 🎨 **Génération de portraits** via DALL-E 3 avec gestion d'erreurs
 - 🌍 **Support multilingue** (FR/EN)
+- 💰 **Calcul coûts temps réel** pour tous les modèles IA
+- 🖥️ **Monitoring système** avancé (CPU, RAM, réseau)
+- ⚡ **Base de données optimisée** (WAL mode, cache, pooling)
 
 ## 🛠️ Installation
 
@@ -50,7 +53,8 @@ venv\Scripts\activate  # Windows
 
 3. **Installer les dépendances :**
 ```bash
-pip install -r requirements.txt
+pip install -r requirements/requirements.txt
+pip install -r requirements/dev-requirements.txt  # Pour le développement
 ```
 
 4. **Configurer les variables d'environnement :**
@@ -61,8 +65,32 @@ cp .env.example .env
 
 5. **Lancer l'application :**
 ```bash
-streamlit run app.py
+# 🏠 MÉTHODE 1: Lancement direct (le plus simple)
+python run_app.py
+
+# 🏠 MÉTHODE 2: Streamlit direct
+streamlit run src/ui/app.py
+
+# 🔧 MÉTHODE 3: Via script de développement (avec outils)
+python scripts/dev.py run                # Version legacy
+python scripts/dev.py run --refactored   # Version optimisée
+
+# 🐳 MÉTHODE 4: Docker (pour production ou isolement)
+python scripts/deploy.py docker          # Via script automatisé
+# OU
+cd docker/ && docker-compose up          # Docker-compose direct
 ```
+
+### ⚡ **Résumé des méthodes de lancement**
+
+| Méthode | Commande | Usage | Docker |
+|---------|----------|--------|--------|
+| **Direct** | `python run_app.py` | Simple, rapide | ❌ Non |
+| **Streamlit** | `streamlit run src/ui/app.py` | Debug interface | ❌ Non |
+| **Dev script** | `python scripts/dev.py run` | Développement + outils | ❌ Non |
+| **Deploy local** | `python scripts/deploy.py local` | Test déploiement | ❌ Non |
+| **Deploy Docker** | `python scripts/deploy.py docker` | Production, isolement | ✅ Oui |
+| **Docker direct** | `cd docker/ && docker-compose up` | Docker manuel | ✅ Oui |
 
 ### Configuration des secrets GitHub (pour CI/CD)
 
@@ -73,8 +101,6 @@ Pour que les tests automatisés fonctionnent, ajoutez ces secrets dans votre rep
    - `OPENAI_API_KEY` : Votre clé API OpenAI
    - `ANTHROPIC_API_KEY` : Votre clé API Anthropic  
    - `DEEPSEEK_API_KEY` : Votre clé API DeepSeek (optionnel)
-  - Anthropic API Key (pour Claude)
-  - DeepSeek API Key (optionnel)
 
 ### Installation automatique
 
@@ -86,7 +112,7 @@ Pour que les tests automatisés fonctionnent, ajoutez ces secrets dans votre rep
 
 2. **Exécutez le script d'installation**
    ```bash
-   python setup.py
+   python scripts/setup.py
    ```
 
 3. **Configurez vos clés API**
@@ -100,14 +126,70 @@ Pour que les tests automatisés fonctionnent, ajoutez ces secrets dans votre rep
 
 4. **Lancez l'application**
    ```bash
-   python run_app.py
-   ```
+# Méthode classique
+python run_app.py
+
+# Méthodes automatisées (recommandé)
+python scripts/dev.py run                 # Version legacy
+python scripts/dev.py run --refactored    # Version optimisée
+
+# Configuration rapide première fois
+python scripts/setup_quick.py
+```
+
+## 🛠️ Scripts d'automatisation
+
+Le projet inclut **3 scripts automatisés** pour simplifier le développement et déploiement :
+
+### ⚡ `setup_quick.py` - Configuration express
+Configuration automatique en 30 secondes :
+```bash
+python scripts/setup_quick.py           # Tout-en-un rapide
+```
+
+### 🔧 `dev.py` - Développement LOCAL (sans Docker)
+```bash
+python scripts/dev.py setup              # Configure l'environnement complet
+python scripts/dev.py run                # Lance l'app LOCAL (legacy)
+python scripts/dev.py run --refactored   # Lance l'app LOCAL (version optimisée)
+python scripts/dev.py test               # Exécute les 158 tests
+python scripts/dev.py test --no-coverage # Tests sans couverture
+python scripts/dev.py check              # Vérifications qualité (Black, flake8, mypy)
+python scripts/dev.py fix                # Corrige automatiquement le style
+python scripts/dev.py clean              # Nettoie les fichiers temporaires
+python scripts/dev.py status             # Affiche le statut complet du projet
+```
+
+### 🚢 `deploy.py` - Déploiement automatisé
+```bash
+python scripts/deploy.py check           # Vérifier les prérequis
+python scripts/deploy.py local           # Déploiement local simple
+python scripts/deploy.py local --optimized # Version optimisée
+python scripts/deploy.py docker          # Déploiement Docker (development)
+python scripts/deploy.py docker --staging # Environnement staging
+python scripts/deploy.py docker --production # Production avec sécurité
+python scripts/deploy.py package         # Créer un package ZIP déployable
+python scripts/deploy.py stop            # Arrêter tous les déploiements
+```
+
+### 🐳 **Docker - Conteneurisation**
+```bash
+# Méthode 1: Via script deploy.py (RECOMMANDÉ)
+python scripts/deploy.py docker          # Mode développement
+python scripts/deploy.py docker --production # Mode production
+
+# Méthode 2: Docker-compose direct
+cd docker/
+docker-compose up -d                     # Lancement en arrière-plan
+docker-compose logs -f                   # Voir les logs
+docker-compose down                      # Arrêter les conteneurs
+```
 
 ### Installation manuelle
 
 1. **Installez les dépendances**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements/requirements.txt
    ```
 
 2. **Configurez l'environnement**
@@ -118,12 +200,12 @@ Pour que les tests automatisés fonctionnent, ajoutez ces secrets dans votre rep
 
 3. **Initialisez la base de données**
    ```bash
-   python -c "from database import init_db; init_db()"
+   python -c "from src.data.database import init_db; init_db()"
    ```
 
 4. **Lancez l'application**
    ```bash
-   streamlit run app.py
+   python run_app.py
    ```
 
 ## 🚀 Utilisation
@@ -168,27 +250,68 @@ L'application enregistre et analyse automatiquement :
 
 ## 🏗️ Architecture
 
+### Structure du Projet (Optimisée)
+
 ```
-CompareModelPoc/
-├── app.py              # Application principale Streamlit
-├── auth.py             # Gestion de l'authentification
-├── chatbot.py          # Interface de chat et gestion des modèles
-├── config.py           # Configuration centralisée
-├── database.py         # Gestion de la base de données SQLite
-├── models.py           # Modèles de données et requêtes
-├── performance.py      # Analyse et visualisation des performances
-├── portraits.py        # Génération de portraits IA
-├── run_app.py          # Script de lancement avec vérifications
-├── setup.py            # Script d'installation automatique
-├── requirements.txt    # Dépendances Python
-├── .env.exemple        # Template de configuration
-├── tests/              # Tests unitaires
-│   ├── test_app.py
-│   ├── test_ia.py
-│   └── test_models.py
-└── .github/workflows/  # CI/CD GitHub Actions
-    └── ci-develop.yml
+📦 CompareModelPoc/
+├── 🎯 run_app.py                # Point d'entrée principal
+├── 📁 scripts/                 # Outils développement/déploiement
+│   ├── deploy.py               # Déploiement automatisé
+│   ├── dev.py                  # Outils développement
+│   ├── setup.py                # Installation/configuration
+│   └── setup_quick.py          # Configuration express
+├── 🐳 docker/                  # Infrastructure Docker
+│   ├── Dockerfile              
+│   ├── docker-compose.yml
+│   ├── DOCKER.md
+│   └── nginx/                  # Configuration Nginx
+├── 📦 requirements/            # Gestion dépendances
+│   ├── requirements.txt        # Production
+│   └── dev-requirements.txt    # Développement
+├── 📚 docs/                    # Documentation complète
+│   ├── README.md               # Guide principal
+│   ├── DEPLOYMENT_GUIDE.md     # Guide déploiement
+│   ├── TECHNICAL_GUIDE.md      # Documentation technique
+│   ├── USER_GUIDE.md           # Guide utilisateur
+│   ├── MIGRATION_ROADMAP.md    # Plan migration (historique)
+│   └── PROJECT_STATUS.md       # État projet (historique)
+└── 🏗️ src/                     # Code applicatif unifié
+    ├── 🤖 ai/                  # Intelligence artificielle
+    │   ├── chatbot.py          # Interface chat + API (optimisé)
+    │   ├── portraits.py        # Génération portraits (optimisé)
+    │   ├── api_client.py       # Gestionnaire API centralisé
+    │   └── models_config.py    # Configuration modèles
+    ├── 🔐 auth/                 # Authentification
+    │   └── auth.py             # Système auth complet (optimisé)
+    ├── 💾 data/                 # Données et base
+    │   ├── database.py         # Gestionnaire BD optimisé
+    │   └── models.py           # Modèles données optimisés
+    ├── 📊 analytics/            # Analyses et monitoring
+    │   ├── performance.py      # Métriques performances
+    │   └── system_monitoring.py # Monitoring système
+    ├── ⚙️ core/                 # Configuration core
+    │   └── config.py           # Configuration centralisée
+    └── 🖥️ ui/                   # Interface utilisateur
+        ├── app.py              # Application principale (optimisée)
+        ├── app_refactored.py   # Version modulaire
+        ├── components/         # Composants réutilisables
+        │   └── styles.py       # Styles CSS
+        └── pages/              # Pages modulaires
+            ├── auth_page.py    # Page authentification
+            ├── chatbot_page.py # Page chat principal
+            ├── dashboard_page.py # Tableau de bord
+            ├── performance_page.py # Analyses performances
+            └── settings_page.py # Configuration utilisateur
 ```
+
+### 🔧 Outils et Scripts
+
+Le projet inclut plusieurs scripts d'automatisation dans `scripts/` :
+
+- **setup.py** : Installation complète avec vérifications  
+- **setup_quick.py** : Configuration express
+- **dev.py** : Outils de développement (run, tests, lint, fix)
+- **deploy.py** : Déploiement automatisé (local, Docker)
 
 ### Technologies utilisées
 - **Frontend** : Streamlit avec Plotly pour les graphiques
@@ -245,12 +368,12 @@ Modifiez `config.py` pour :
 
 2. **Erreur de base de données**
    ```bash
-   python -c "from database import init_db; init_db()"
+   python -c "from src.data.database import init_db; init_db()"
    ```
 
 3. **Dépendances manquantes**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements/requirements.txt
    ```
 
 4. **Tests qui échouent**

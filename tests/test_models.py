@@ -6,7 +6,7 @@ import pytest
 # Ajout du chemin pour les imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from models import (
+from src.data.models import (
     create_campaign,
     create_character,
     get_campaign_messages,
@@ -28,7 +28,7 @@ class TestDatabaseModels:
         save_model_choice(user_id, "GPT-4")
 
         # Vérifier la sauvegarde
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -61,7 +61,7 @@ class TestDatabaseModels:
         assert campaign_id > 0
 
         # Vérifier en base
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -89,7 +89,7 @@ class TestDatabaseModels:
         assert character_id > 0
 
         # Vérifier en base
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -203,7 +203,7 @@ class TestDatabaseModels:
         campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en")
 
         # Ajouter des messages à la première campagne
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -246,7 +246,7 @@ class TestDatabaseModels:
         # Créer une campagne et des messages
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
 
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
