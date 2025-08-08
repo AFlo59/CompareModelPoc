@@ -39,6 +39,17 @@ class DatabaseConnection:
     def get_connection(cls) -> sqlite3.Connection:
         """Retourne une connexion SQLite optimisée."""
         # Une connexion par thread pour éviter les conflits
+        # Si une connexion existe mais est fermée/invalide, on la recrée.
+        if hasattr(cls._thread_local, 'connection'):
+            try:
+                # Vérifie que la connexion est valide
+                cls._thread_local.connection.execute("SELECT 1")
+            except sqlite3.Error:
+                try:
+                    cls._thread_local.connection.close()
+                except Exception:
+                    pass
+                del cls._thread_local.connection
         if not hasattr(cls._thread_local, 'connection'):
             cls._thread_local.connection = cls._create_optimized_connection()
         
@@ -47,8 +58,9 @@ class DatabaseConnection:
     @classmethod
     def _create_optimized_connection(cls) -> sqlite3.Connection:
         """Crée une connexion SQLite avec optimisations."""
+        # Utiliser le chemin alias `DB_PATH` pour compatibilité avec les tests
         conn = sqlite3.connect(
-            DatabaseConfig.DB_PATH,
+            DB_PATH,
             check_same_thread=False,
             timeout=30.0,  # Timeout de 30 secondes
             isolation_level=None  # Autocommit mode
@@ -311,23 +323,33 @@ class DatabaseSchema:
 @contextmanager
 def get_optimized_connection():
     """Context manager pour connexions optimisées avec gestion d'erreurs."""
-    conn = DatabaseConnection.get_connection()
+    conn = None
     try:
-        conn.execute("BEGIN")
+        conn = DatabaseConnection.get_connection()
+        try:
+            conn.execute("BEGIN")
+        except sqlite3.Error:
+            # Si la connexion est invalide/fermée, on la recrée et on recommence
+            DatabaseConnection.close_all_connections()
+            conn = DatabaseConnection.get_connection()
+            conn.execute("BEGIN")
         yield conn
-    except Exception as e:
-        conn.rollback()
-        logger.error(f"Erreur base de données, rollback effectué: {e}")
-        raise
-    else:
         conn.commit()
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception as rb_err:
+                logger.error(f"Échec du rollback (connexion invalide ?): {rb_err}")
+        logger.error(f"Erreur base de données, rollback tenté: {e}")
+        raise
 
 def init_optimized_db():
     """Initialise la base de données avec optimisations."""
     logger.info("Initialisation de la base de données optimisée")
     
     # Créer le répertoire si nécessaire
-    DatabaseConfig.DB_PATH.parent.mkdir(exist_ok=True)
+    DB_PATH.parent.mkdir(exist_ok=True)
     
     with get_optimized_connection() as conn:
         # Créer les tables
