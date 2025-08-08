@@ -141,6 +141,29 @@ class TestCharacterPage:
                 selected = st.session_state.get('selected_character')
             assert selected == 7
 
+    @patch('src.ui.views.character_page.require_auth', return_value=True)
+    @patch('src.ui.views.character_page.get_user_campaigns')
+    @patch('src.ui.views.character_page.get_user_characters')
+    def test_character_page_existing_characters(self, mock_get_chars, mock_get_camps, _auth):
+        from src.ui.views.character_page import show_character_page
+
+        mock_get_camps.return_value = [{"id": 1, "name": "Camp 1", "themes": ["Fantasy"]}]
+        mock_get_chars.return_value = [
+            {"id": 10, "name": "Hero", "char_class": "Guerrier", "race": "Humain", "portrait_url": None, "campaign_id": 1}
+        ]
+
+        with patch('src.ui.views.character_page.st') as st:
+            class SessionLike(dict):
+                def __contains__(self, key):
+                    return dict.__contains__(self, key) or hasattr(self, key)
+            st.session_state = SessionLike()
+            st.session_state.user = {"id": 1}
+            st.columns.side_effect = lambda spec: [_mk_col() for _ in range(len(spec) if isinstance(spec, list) else spec)]
+            # Pas de clic, juste rendu
+            st.button.return_value = False
+            show_character_page()
+            st.subheader.assert_called()
+
 
 class TestChatbotPage:
     @patch('src.ui.views.chatbot_page.require_auth', return_value=True)
