@@ -230,10 +230,11 @@ class CampaignManager:
                     c.name,
                     c.themes,
                     c.language,
+                    c.ai_model,
                     c.gm_portrait,
                     c.created_at,
                     c.updated_at,
-                    COUNT(m.id) as message_count,
+                    COALESCE(COUNT(m.id), 0) as message_count,
                     MAX(m.timestamp) as last_activity
                 FROM campaigns c
                 LEFT JOIN messages m ON c.id = m.campaign_id
@@ -244,17 +245,33 @@ class CampaignManager:
             
             campaigns = []
             for row in cursor.fetchall():
-                campaign = {
-                    "id": row[0],
-                    "name": row[1],
-                    "themes": json.loads(row[2]) if row[2] else [],
-                    "language": row[3],
-                    "gm_portrait": row[4],
-                    "created_at": row[5],
-                    "updated_at": row[6],
-                    "message_count": row[7] or 0,
-                    "last_activity": row[8]
-                }
+                # Compat: anciens tests peuvent mocker sans ai_model (9 colonnes)
+                if len(row) == 9:
+                    campaign = {
+                        "id": row[0],
+                        "name": row[1],
+                        "themes": json.loads(row[2]) if row[2] else [],
+                        "language": row[3],
+                        "gm_portrait": row[4],
+                        "created_at": row[5],
+                        "updated_at": row[6],
+                        "message_count": row[7] or 0,
+                        "last_activity": row[8],
+                        "ai_model": "GPT-4o",  # valeur de repli
+                    }
+                else:
+                    campaign = {
+                        "id": row[0],
+                        "name": row[1],
+                        "themes": json.loads(row[2]) if row[2] else [],
+                        "language": row[3],
+                        "ai_model": row[4],
+                        "gm_portrait": row[5],
+                        "created_at": row[6],
+                        "updated_at": row[7],
+                        "message_count": row[8] or 0,
+                        "last_activity": row[9]
+                    }
                 campaigns.append(campaign)
         
         # Cache pour 5 minutes

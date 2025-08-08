@@ -180,31 +180,21 @@ def launch_chat_interface_optimized(user_id: int) -> None:
     campaign = st.session_state.campaign
     campaign_id = campaign.get("id")
     
-    # Sélection du modèle avec validation
+    # Déterminer le modèle automatiquement (campagne -> préférence utilisateur -> défaut)
     try:
         from src.data.models import get_user_model_choice
-        default_model = get_user_model_choice(user_id) or "GPT-4"
-    except:
-        default_model = "GPT-4"
-    
-    available_models = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]
-    
-    # Interface de sélection du modèle
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        model = st.selectbox(
-            "🤖 Choisir le modèle :",
-            available_models,
-            index=available_models.index(default_model) if default_model in available_models else 0
-        )
-    
-    with col2:
-        # Afficher le coût estimé du modèle
-        model_config = get_model_config(model)
-        st.metric(
-            "💰 Coût/1K tokens", 
-            f"${model_config.cost_per_1k_input:.3f}"
-        )
+        user_pref = get_user_model_choice(user_id)
+    except Exception:
+        user_pref = None
+
+    model = campaign.get("ai_model") or user_pref or "GPT-4"
+    model_config = get_model_config(model)
+    # Afficher une métrique informative plutôt qu'un sélecteur
+    info_col1, info_col2 = st.columns([3, 1])
+    with info_col1:
+        st.caption(f"🤖 Modèle actif: {model}")
+    with info_col2:
+        st.metric("💰 Coût/1K tokens", f"${model_config.cost_per_1k_input:.3f}")
     
     # Initialisation de l'historique
     if "history" not in st.session_state:

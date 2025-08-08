@@ -288,22 +288,29 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
     
     # Créer la configuration d'environnement
     env_file = create_deployment_env(environment)
-    
+
+    # Toujours arrêter proprement les éventuels conteneurs existants avant rebuild
+    compose_file = "docker/docker-compose.yml"
+    project_name = f"comparemodelpoc_{environment}"
+    print("🧹 Arrêt des conteneurs existants (docker-compose down)...")
+    down_cmd = (
+        f"docker-compose -p {project_name} -f {compose_file} --env-file {env_file} down --remove-orphans"
+    )
+    run_command(down_cmd, check=False)
+
     # Build de l'image
     image_name = f"dnd-ai-gamemaster:{environment}"
     print(f"🐳 Construction de l'image Docker: {image_name}")
-    
+
     docker_build_cmd = f"docker build -f docker/Dockerfile -t {image_name} ."
     run_command(docker_build_cmd)
-    
+
     if build_only:
         print_success(f"Image Docker {image_name} construite avec succès !")
         return True
-    
+
     # Lancement avec Docker Compose
     print("🚀 Lancement de l'application avec Docker Compose...")
-    compose_file = "docker/docker-compose.yml"
-    project_name = f"comparemodelpoc_{environment}"
     # Up avec rebuild et suppression des orphelins pour éviter les conflits au redeploy
     compose_cmd = (
         f"docker-compose -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"

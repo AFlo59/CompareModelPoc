@@ -87,7 +87,11 @@ deploy_dev() {
     
     local PROJECT_NAME="comparemodelpoc_dev"
     
-    # Build et démarrage (avec fichier compose dans docker/)
+    # Down d'abord pour éviter les conflits avec d'anciens conteneurs
+    log_info "🧹 Arrêt des conteneurs existants (down --remove-orphans)"
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down --remove-orphans || true
+
+    # Build et démarrage
     log_info "Construction de l'image Docker..."
     $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
     
@@ -114,6 +118,10 @@ deploy_prod() {
     fi
     
     local PROJECT_NAME="comparemodelpoc_prod"
+    # Down d'abord pour éviter les conflits
+    log_info "🧹 Arrêt des conteneurs existants (down --remove-orphans)"
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" down --remove-orphans || true
+
     # Build et démarrage avec profil production
     log_info "Construction de l'image Docker..."
     $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
