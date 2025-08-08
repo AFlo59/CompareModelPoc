@@ -138,7 +138,7 @@ def run_tests(coverage: bool = True, verbose: bool = True):
     """Lance la suite de tests."""
     print_header("Exécution des tests")
     
-    cmd = "pytest tests/"
+    cmd = "python -m pytest tests/"
     if verbose:
         cmd += " -v"
     if coverage:

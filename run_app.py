@@ -11,16 +11,17 @@ if missing_files:
     print("Fichiers manquants :", ", ".join(missing_files))
     sys.exit(1)
 
-# Chargement des variables d'environnement
-from dotenv import load_dotenv
-
-# Charger .env seulement s'il existe (développement local)
-env_file = Path(".env")
-if env_file.exists():
-    load_dotenv()
-    print("✅ Fichier .env chargé")
-else:
-    print("ℹ️  Mode Docker : utilisation des variables d'environnement")
+# Chargement des variables d'environnement (optionnel en local)
+try:
+    from dotenv import load_dotenv
+    env_file = Path(".env")
+    if env_file.exists():
+        load_dotenv()
+        print("✅ Fichier .env chargé")
+    else:
+        print("ℹ️  Mode Docker : utilisation des variables d'environnement")
+except Exception:
+    print("ℹ️  python-dotenv non disponible, variables .env ignorées")
 
 # Vérification de la clé API principale
 openai_key = os.getenv("OPENAI_API_KEY")
