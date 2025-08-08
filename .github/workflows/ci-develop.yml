@@ -44,6 +44,7 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key-placeholder' }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'test-key-placeholder' }}
         DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY || 'test-key-placeholder' }}
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         python -c "from src.data.database import get_connection; print('✅ Import test successful')"
         pytest tests/ --maxfail=3 --disable-warnings -v --cov=src --cov-report=xml --cov-report=term-missing --cov-fail-under=80

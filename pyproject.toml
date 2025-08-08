@@ -42,7 +42,9 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 "*" = ["**/*.py"]
