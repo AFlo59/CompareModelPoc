@@ -44,6 +44,32 @@ def apply_custom_css():
         .sidebar hr {
             margin: 0.5rem 0 !important;
         }
+        /* Cacher la navigation automatique de Streamlit */
+        .css-1d391kg {
+            display: none !important;
+        }
+        .css-1v0mbdj {
+            display: none !important;
+        }
+        /* Cacher la section de navigation automatique */
+        section[data-testid="stSidebar"] > div > div > div > ul {
+            display: none !important;
+        }
+        /* Style pour nos boutons de navigation personnalisés */
+        .stButton > button {
+            width: 100%;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            background: #f0f2f6;
+            border-color: #667eea;
+        }
     </style>
     """,
         unsafe_allow_html=True,

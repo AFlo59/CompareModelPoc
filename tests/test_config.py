@@ -75,11 +75,11 @@ class TestProjectStructure:
         
         ui_files = [
             "src/ui/components/styles.py",
-            "src/ui/pages/auth_page.py",
-            "src/ui/pages/dashboard_page.py",
-            "src/ui/pages/chatbot_page.py",
-            "src/ui/pages/performance_page.py",
-            "src/ui/pages/settings_page.py",
+            "src/ui/views/auth_page.py",
+            "src/ui/views/dashboard_page.py",
+            "src/ui/views/chatbot_page.py",
+            "src/ui/views/performance_page.py",
+            "src/ui/views/settings_page.py",
             "src/ui/app.py"  # Version modulaire (ex-refactored)
         ]
         
@@ -141,7 +141,7 @@ class TestImportability:
         try:
             from src.ui import app
             from src.ui.components import styles
-            from src.ui.pages import auth_page, dashboard_page, chatbot_page
+            from src.ui.views import auth_page, dashboard_page, chatbot_page
             assert True
         except ImportError as e:
             pytest.fail(f"Failed to import UI modules: {e}")

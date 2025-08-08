@@ -30,9 +30,14 @@ def show_auth_page() -> None:
             user = login()
             if user:
                 st.session_state.user = user
+                # Afficher un message de succès persistant
+                st.success("✅ Connexion réussie ! Redirection en cours...")
                 # Redirection intelligente selon l'état de l'utilisateur
                 next_page = determine_user_next_page(user["id"])
                 st.session_state.page = next_page
+                # Délai court pour laisser le temps de voir le message
+                import time
+                time.sleep(1)
                 st.rerun()
         else:
             register_user()

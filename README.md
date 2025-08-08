@@ -296,7 +296,7 @@ L'application enregistre et analyse automatiquement :
         ├── app_refactored.py   # Version modulaire
         ├── components/         # Composants réutilisables
         │   └── styles.py       # Styles CSS
-        └── pages/              # Pages modulaires
+        └── views/              # Vues modulaires
             ├── auth_page.py    # Page authentification
             ├── chatbot_page.py # Page chat principal
             ├── dashboard_page.py # Tableau de bord

@@ -8,11 +8,11 @@ from typing import Any, Dict, Optional
 import streamlit as st
 
 from src.ui.components.styles import apply_custom_css, configure_page
-from src.ui.pages.auth_page import show_auth_page
-from src.ui.pages.dashboard_page import show_dashboard_page
-from src.ui.pages.chatbot_page import show_chatbot_page
-from src.ui.pages.performance_page import show_performance_page
-from src.ui.pages.settings_page import show_settings_page
+from src.ui.views.auth_page import show_auth_page
+from src.ui.views.dashboard_page import show_dashboard_page
+from src.ui.views.chatbot_page import show_chatbot_page
+from src.ui.views.performance_page import show_performance_page
+from src.ui.views.settings_page import show_settings_page
 from src.data.database import init_db
 
 # Configuration du logging
@@ -29,6 +29,41 @@ def initialize_app() -> None:
         logger.error(f"Erreur initialisation: {e}")
         st.stop()
 
+def show_navigation() -> None:
+    """Affiche la navigation dans la sidebar."""
+    # Vérifier si l'utilisateur est connecté
+    user = st.session_state.get("user", None)
+    
+    if user:
+        with st.sidebar:
+            st.markdown("### 🎲 DnD AI GameMaster")
+            st.markdown(f"👤 **{user.get('email', 'Utilisateur')}**")
+            st.markdown("---")
+            
+            # Navigation principale
+            nav_pages = {
+                "🏠 Tableau de bord": "dashboard",
+                "💬 Chat avec IA": "chatbot", 
+                "📊 Performances": "performance",
+                "⚙️ Paramètres": "settings"
+            }
+            
+            for label, page_key in nav_pages.items():
+                if st.button(label, key=page_key, use_container_width=True):
+                    st.session_state.page = page_key
+                    st.rerun()
+            
+            st.markdown("---")
+            
+            # Déconnexion
+            if st.button("🚪 Déconnexion", use_container_width=True):
+                # Clear user session
+                if "user" in st.session_state:
+                    del st.session_state["user"]
+                st.session_state.page = "auth"
+                st.success("👋 Déconnecté avec succès!")
+                st.rerun()
+
 def main() -> None:
     """Fonction principale de l'application."""
     # Configuration de la page
@@ -44,6 +79,11 @@ def main() -> None:
     if "page" not in st.session_state:
         st.session_state.page = "auth"
 
+    # Afficher la navigation si connecté
+    user = st.session_state.get("user", None)
+    if user:
+        show_navigation()
+
     # Routage des pages
     page_functions = {
         "auth": show_auth_page,
@@ -51,7 +91,6 @@ def main() -> None:
         "chatbot": show_chatbot_page,
         "performance": show_performance_page,
         "settings": show_settings_page,
-        # TODO: Ajouter les autres pages (campaign, character, etc.)
     }
 
     current_page = st.session_state.page
