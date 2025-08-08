@@ -65,6 +65,18 @@ setup_directories() {
     log_success "Répertoires créés"
 }
 
+compose_cmd() {
+    # Utiliser 'docker compose' si disponible, sinon 'docker-compose'
+    if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+        echo "docker compose"
+    else
+        echo "docker-compose"
+    fi
+}
+
+COMPOSE=$(compose_cmd)
+COMPOSE_FILE="docker/docker-compose.yml"
+
 # Déploiement en développement
 deploy_dev() {
     log_info "🚀 Déploiement en mode développement..."
@@ -73,12 +85,14 @@ deploy_dev() {
     check_env
     setup_directories
     
-    # Build et démarrage
+    local PROJECT_NAME="comparemodelpoc_dev"
+    
+    # Build et démarrage (avec fichier compose dans docker/)
     log_info "Construction de l'image Docker..."
-    docker-compose build
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
     
     log_info "Démarrage des services..."
-    docker-compose up -d app
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d --remove-orphans
     
     log_success "✅ Application déployée en mode développement!"
     log_info "🌐 Accès: http://localhost:8501"
@@ -99,12 +113,13 @@ deploy_prod() {
         log_warning "Pour HTTPS, placez cert.pem et key.pem dans nginx/ssl/"
     fi
     
+    local PROJECT_NAME="comparemodelpoc_prod"
     # Build et démarrage avec profil production
     log_info "Construction de l'image Docker..."
-    docker-compose build
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
     
     log_info "Démarrage des services en mode production..."
-    docker-compose --profile production up -d
+    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --profile production up -d --remove-orphans
     
     log_success "✅ Application déployée en mode production!"
     log_info "🌐 Accès: http://localhost (ou votre domaine)"
@@ -114,7 +129,10 @@ deploy_prod() {
 # Arrêter les services
 stop_services() {
     log_info "🛑 Arrêt des services..."
-    docker-compose down
+    local PROJECT_NAME_DEV="comparemodelpoc_dev"
+    local PROJECT_NAME_PROD="comparemodelpoc_prod"
+    $COMPOSE -p "$PROJECT_NAME_DEV" -f "$COMPOSE_FILE" down --remove-orphans || true
+    $COMPOSE -p "$PROJECT_NAME_PROD" -f "$COMPOSE_FILE" down --remove-orphans || true
     log_success "✅ Services arrêtés"
 }
 
@@ -127,7 +145,10 @@ show_logs() {
 # Nettoyage complet
 cleanup() {
     log_info "🧹 Nettoyage complet..."
-    docker-compose down -v --remove-orphans
+    local PROJECT_NAME_DEV="comparemodelpoc_dev"
+    local PROJECT_NAME_PROD="comparemodelpoc_prod"
+    $COMPOSE -p "$PROJECT_NAME_DEV" -f "$COMPOSE_FILE" down -v --remove-orphans || true
+    $COMPOSE -p "$PROJECT_NAME_PROD" -f "$COMPOSE_FILE" down -v --remove-orphans || true
     docker system prune -f
     log_success "✅ Nettoyage terminé"
 }

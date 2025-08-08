@@ -3,6 +3,7 @@ Module de base de données optimisé avec performance améliorée
 """
 
 import logging
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -28,7 +29,37 @@ class DatabaseConfig:
     ]
     
     # Version du schéma pour les migrations
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
+def get_db_path() -> Path:
+    """Retourne le chemin de la base, en honorant les surcharges de tests.
+    Priorité à `DatabaseConfig.DB_PATH` (patchable dans les tests), sinon
+    repli sur l'alias de module `DB_PATH`.
+    """
+    # 1) Priorité à la variable d'environnement (Docker/production)
+    env_db = os.getenv("DATABASE_PATH")
+    if env_db:
+        return Path(env_db)
+
+    module_db = None
+    try:
+        module_db = DB_PATH  # type: ignore[name-defined]
+    except Exception:
+        module_db = None
+    config_db = None
+    try:
+        config_db = getattr(DatabaseConfig, "DB_PATH", None)
+    except Exception:
+        config_db = None
+
+    # Si DatabaseConfig.DB_PATH est défini et différent de l'alias module, on le privilégie (cas de tests patchés)
+    if config_db and (not module_db or str(config_db) != str(module_db)):
+        return Path(config_db)
+    # Sinon, on utilise l'alias module s'il est disponible (cas des fixtures qui patchent DB_PATH)
+    if module_db:
+        return Path(module_db)
+    # Repli par défaut
+    return Path("database.db")
+
 
 class DatabaseConnection:
     """Gestionnaire de connexion optimisé avec pooling basique."""
@@ -58,9 +89,9 @@ class DatabaseConnection:
     @classmethod
     def _create_optimized_connection(cls) -> sqlite3.Connection:
         """Crée une connexion SQLite avec optimisations."""
-        # Utiliser le chemin alias `DB_PATH` pour compatibilité avec les tests
+        # Utiliser un getter patch-friendly pour compatibilité avec les tests
         conn = sqlite3.connect(
-            DB_PATH,
+            get_db_path(),
             check_same_thread=False,
             timeout=30.0,  # Timeout de 30 secondes
             isolation_level=None  # Autocommit mode
@@ -262,6 +293,10 @@ class DatabaseSchema:
             logger.info("Migration vers version 3: Ajout contraintes et colonnes")
             cls._migration_v3(conn)
         
+        if current_version < 4:
+            logger.info("Migration vers version 4: Ajout de la colonne ai_model sur campaigns")
+            cls._migration_v4(conn)
+        
         # Mettre à jour la version finale
         if current_version < DatabaseConfig.SCHEMA_VERSION:
             cls.set_schema_version(conn, DatabaseConfig.SCHEMA_VERSION)
@@ -320,6 +355,44 @@ class DatabaseSchema:
             except sqlite3.OperationalError:
                 pass
 
+    @staticmethod
+    def _table_has_column(conn: sqlite3.Connection, table_name: str, column_name: str) -> bool:
+        """Retourne True si la colonne existe dans la table. Tolère les mocks dans les tests."""
+        try:
+            cursor = conn.cursor()
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            rows = cursor.fetchall()
+            if not rows:
+                return False
+            column_names = []
+            for row in rows:
+                # sqlite3.Row or tuple: second element is the column name
+                try:
+                    name = row[1]
+                except Exception:
+                    try:
+                        name = row.get("name")  # type: ignore[attr-defined]
+                    except Exception:
+                        name = None
+                if name:
+                    column_names.append(name)
+            return column_name in column_names
+        except Exception:
+            # En cas de mock incomplet dans les tests, retourner False pour tenter l'ALTER TABLE
+            return False
+
+    @staticmethod
+    def _migration_v4(conn: sqlite3.Connection):
+        """Migration version 4: ajoute la colonne ai_model à campaigns si manquante."""
+        try:
+            if not DatabaseSchema._table_has_column(conn, "campaigns", "ai_model"):
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE campaigns ADD COLUMN ai_model TEXT DEFAULT 'GPT-4o'")
+                conn.commit()
+        except sqlite3.OperationalError:
+            # Si la table n'existe pas encore, elle sera créée par create_tables
+            pass
+
 @contextmanager
 def get_optimized_connection():
     """Context manager pour connexions optimisées avec gestion d'erreurs."""
@@ -348,8 +421,13 @@ def init_optimized_db():
     """Initialise la base de données avec optimisations."""
     logger.info("Initialisation de la base de données optimisée")
     
-    # Créer le répertoire si nécessaire
-    DB_PATH.parent.mkdir(exist_ok=True)
+    # Créer le répertoire si nécessaire avec gestion d'erreurs/permissions
+    db_dir = get_db_path().parent
+    try:
+        db_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        logger.error(f"Impossible de créer le répertoire DB {db_dir}: {e}")
+        raise
     
     with get_optimized_connection() as conn:
         # Créer les tables

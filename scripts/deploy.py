@@ -301,11 +301,14 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
         print_success(f"Image Docker {image_name} construite avec succès !")
         return True
     
-    # Lancement avec docker-compose
+    # Lancement avec Docker Compose
     print("🚀 Lancement de l'application avec Docker Compose...")
-    
-    # Utiliser le bon fichier d'environnement et le docker-compose dans docker/
-    compose_cmd = f"docker-compose -f docker/docker-compose.yml --env-file {env_file} up -d"
+    compose_file = "docker/docker-compose.yml"
+    project_name = f"comparemodelpoc_{environment}"
+    # Up avec rebuild et suppression des orphelins pour éviter les conflits au redeploy
+    compose_cmd = (
+        f"docker-compose -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"
+    )
     run_command(compose_cmd)
     
     print_success("Application déployée avec Docker !")
@@ -526,14 +529,16 @@ pause
     print_success("Scripts de déploiement créés")
 
 
-def stop_deployment():
+def stop_deployment(environment: str = "development"):
     """Arrête les déploiements en cours."""
     print_header("Arrêt des déploiements")
     
-    # Arrêter Docker Compose
-    if Path("docker-compose.yml").exists():
+    # Arrêter Docker Compose (utilise le même fichier et projet que le déploiement)
+    compose_file = "docker/docker-compose.yml"
+    project_name = f"comparemodelpoc_{environment}"
+    if Path(compose_file).exists():
         print("🐳 Arrêt de Docker Compose...")
-        run_command("docker-compose down", check=False)
+        run_command(f"docker-compose -p {project_name} -f {compose_file} down --remove-orphans", check=False)
     
     # Arrêter les processus Streamlit
     try:
