@@ -43,8 +43,8 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key-placeholder' }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'test-key-placeholder' }}
         DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY || 'test-key-placeholder' }}
+        PYTHONPATH: ${{ github.workspace }}
       run: |
-        export PYTHONPATH=.
         pytest tests/ --maxfail=3 --disable-warnings -v --cov=src --cov-report=xml --cov-report=term-missing --cov-fail-under=80
 
     - name: Upload coverage to Codecov
@@ -71,19 +71,27 @@ jobs:
     - name: Install quality tools
       run: |
         python -m pip install --upgrade pip
-        pip install -r dev-requirements.txt
+        pip install -r requirements/dev-requirements.txt
 
     - name: Check code formatting with Black
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: black --check --diff src/ tests/ --exclude="(migrations|__pycache__|\.git)"
 
     - name: Check import sorting with isort
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: isort --check-only --diff src/ tests/ --skip-gitignore
 
     - name: Lint with flake8
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=__pycache__,migrations
         flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=__pycache__,migrations
 
     - name: Type check with mypy
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: mypy src/ --ignore-missing-imports --check-untyped-defs --exclude="(migrations|__pycache__)" || true
 
