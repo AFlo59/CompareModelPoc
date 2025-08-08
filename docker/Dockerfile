@@ -26,10 +26,9 @@ COPY . .
 
 # La base de données sera initialisée au runtime par l'application
 
-# Créer un utilisateur non-root pour la sécurité
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
-USER appuser
+# Préparer les dossiers de données et logs (créés aussi au runtime)
+RUN mkdir -p /app/data /app/logs && \
+    chmod -R 775 /app
 
 # Exposer le port Streamlit
 EXPOSE 8501
@@ -40,5 +39,7 @@ ENV STREAMLIT_SERVER_PORT=8501 \
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# Point d'entrée de l'application
+# Point d'entrée de l'application (exécuté en root pour compatibilité volumes)
+# Pour exécuter en utilisateur non-root, configurez les permissions du volume
+# et ajoutez `user:` dans docker-compose.
 CMD ["python", "run_app.py"]
