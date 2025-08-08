@@ -98,7 +98,7 @@ def clean_db(test_db):
 
 
 @pytest.fixture
-def sample_user(test_db):
+def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
     import bcrypt
     from src.data.database import get_optimized_connection
@@ -113,11 +113,20 @@ def sample_user(test_db):
             if not cursor.fetchone():
                 raise RuntimeError("Table users not found")
 
-            hashed_password = bcrypt.hashpw("testpassword123".encode("utf-8"), bcrypt.gensalt())
-            cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", ("test@example.com", hashed_password))
-            user_id = cursor.lastrowid
-            conn.commit()
+            # Vérifier si l'utilisateur existe déjà
+            cursor.execute("SELECT id FROM users WHERE email = ?", ("test@example.com",))
+            existing_user = cursor.fetchone()
+            
+            if existing_user:
+                user_id = existing_user[0]
+            else:
+                hashed_password = bcrypt.hashpw("testpassword123".encode("utf-8"), bcrypt.gensalt())
+                cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", ("test@example.com", hashed_password))
+                user_id = cursor.lastrowid
+                conn.commit()
 
         return {"id": user_id, "email": "test@example.com"}
     except Exception as e:
-        pytest.skip(f"Cannot create sample user: {e}")
+        # Ne pas skip, mais plutôt lever l'erreur pour voir ce qui ne va pas
+        print(f"Error creating sample user: {e}")
+        raise

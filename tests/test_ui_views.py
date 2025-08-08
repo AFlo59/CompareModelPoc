@@ -176,20 +176,38 @@ class TestDashboardPage:
             mock_title.assert_called_once()
             assert mock_metric.call_count >= 3
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.dashboard_page.require_auth')
     @patch('src.ui.views.dashboard_page.get_user_campaigns')
     @patch('streamlit.title')
     @patch('streamlit.error')
-    def test_show_dashboard_page_campaigns_error(self, mock_error, mock_title, mock_get_campaigns, 
-                                                mock_require_auth, mock_session_state):
+    def test_show_dashboard_page_campaigns_error(self, mock_error, mock_title, mock_get_campaigns, mock_require_auth):
         """Test dashboard - erreur chargement campagnes."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state.__contains__ = Mock(return_value=True)  # Pour "user" in session_state
+        mock_session_state.__delitem__ = Mock()  # Pour del session_state[key]
+        mock_session_state.keys = Mock(return_value=['user', 'page'])
         mock_get_campaigns.side_effect = Exception("Database error")
         
-        with patch('streamlit.markdown'), \
-             patch('streamlit.columns'), \
+        # Mock st.columns avec le bon nombre de colonnes selon l'argument
+        def create_mock_col():
+            mock_col = Mock()
+            mock_col.__enter__ = Mock(return_value=mock_col)
+            mock_col.__exit__ = Mock(return_value=None)
+            return mock_col
+        
+        def mock_columns_side_effect(n):
+            if n == 2:
+                return [create_mock_col(), create_mock_col()]
+            elif n == 3:
+                return [create_mock_col(), create_mock_col(), create_mock_col()]
+            else:
+                return [create_mock_col() for _ in range(n)]
+        
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.markdown'), \
+             patch('streamlit.columns', side_effect=mock_columns_side_effect), \
              patch('streamlit.metric'), \
              patch('streamlit.divider'), \
              patch('streamlit.button'):
@@ -198,17 +216,16 @@ class TestDashboardPage:
             
             mock_error.assert_called_once()
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.dashboard_page.require_auth')
     @patch('src.ui.views.dashboard_page.get_user_campaigns')
     @patch('streamlit.button')
     @patch('streamlit.rerun')
     def test_show_dashboard_page_new_campaign_button(self, mock_rerun, mock_button, 
-                                                    mock_get_campaigns, mock_require_auth, 
-                                                    mock_session_state):
+                                                    mock_get_campaigns, mock_require_auth):
         """Test dashboard - bouton nouvelle campagne."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
         mock_get_campaigns.return_value = []
         
         # Mock des boutons - nouveau campagne cliqué
@@ -217,15 +234,31 @@ class TestDashboardPage:
         
         mock_button.side_effect = button_side_effect
         
-        with patch('streamlit.title'), \
+        # Mock st.columns avec le bon nombre de colonnes selon l'argument
+        def create_mock_col():
+            mock_col = Mock()
+            mock_col.__enter__ = Mock(return_value=mock_col)
+            mock_col.__exit__ = Mock(return_value=None)
+            return mock_col
+        
+        def mock_columns_side_effect(n):
+            if n == 2:
+                return [create_mock_col(), create_mock_col()]
+            elif n == 3:
+                return [create_mock_col(), create_mock_col(), create_mock_col()]
+            else:
+                return [create_mock_col() for _ in range(n)]
+        
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.title'), \
              patch('streamlit.markdown'), \
-             patch('streamlit.columns'), \
+             patch('streamlit.columns', side_effect=mock_columns_side_effect), \
              patch('streamlit.metric'), \
              patch('streamlit.divider'):
             
             show_dashboard_page()
             
-            assert mock_session_state['page'] == 'campaign'
+            assert mock_session_state.page == 'campaign'
             mock_rerun.assert_called_once()
 
 
@@ -242,28 +275,40 @@ class TestSettingsPage:
         
         mock_require_auth.assert_called_once()
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.settings_page.require_auth')
     @patch('src.ui.views.settings_page.get_user_campaigns')
     @patch('streamlit.title')
     @patch('streamlit.columns')
     @patch('streamlit.button')
     def test_show_settings_page_success(self, mock_button, mock_columns, mock_title, 
-                                       mock_get_campaigns, mock_require_auth, mock_session_state):
+                                       mock_get_campaigns, mock_require_auth):
         """Test settings - succès."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
         mock_get_campaigns.return_value = [{'id': 1, 'name': 'Campaign 1', 'message_count': 5}]
         mock_button.return_value = False
         
-        # Mock des colonnes
-        mock_col1, mock_col2 = Mock(), Mock()
-        mock_columns.return_value = [mock_col1, mock_col2]
-        for col in [mock_col1, mock_col2]:
-            col.__enter__ = Mock(return_value=col)
-            col.__exit__ = Mock(return_value=None)
+        # Mock st.columns avec le bon nombre selon l'argument (settings page utilise [3, 1] et 3)
+        def create_mock_col():
+            mock_col = Mock()
+            mock_col.__enter__ = Mock(return_value=mock_col)
+            mock_col.__exit__ = Mock(return_value=None)
+            return mock_col
+            
+        def mock_columns_side_effect(spec):
+            if isinstance(spec, list) and len(spec) == 2:  # [3, 1]
+                return [create_mock_col(), create_mock_col()]
+            elif spec == 3:  # 3 colonnes
+                return [create_mock_col(), create_mock_col(), create_mock_col()]
+            else:
+                count = spec if isinstance(spec, int) else len(spec)
+                return [create_mock_col() for _ in range(count)]
         
-        with patch('streamlit.divider'), \
+        mock_columns.side_effect = mock_columns_side_effect
+        
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.divider'), \
              patch('streamlit.markdown'), \
              patch('streamlit.info'), \
              patch('streamlit.metric'):
@@ -273,16 +318,15 @@ class TestSettingsPage:
             mock_require_auth.assert_called_once()
             mock_get_campaigns.assert_called_once_with(1)
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.settings_page.require_auth')
     @patch('src.ui.views.settings_page.get_user_campaigns')
     @patch('streamlit.button')
     @patch('streamlit.rerun')
-    def test_show_settings_page_back_button(self, mock_rerun, mock_button, mock_get_campaigns, 
-                                           mock_require_auth, mock_session_state):
+    def test_show_settings_page_back_button(self, mock_rerun, mock_button, mock_get_campaigns, mock_require_auth):
         """Test settings - bouton retour."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
         mock_get_campaigns.return_value = []
         
         # Mock bouton retour cliqué
@@ -291,8 +335,25 @@ class TestSettingsPage:
         
         mock_button.side_effect = button_side_effect
         
-        with patch('streamlit.title'), \
-             patch('streamlit.columns'), \
+        # Mock st.columns avec le bon nombre selon l'argument
+        def create_mock_col():
+            mock_col = Mock()
+            mock_col.__enter__ = Mock(return_value=mock_col)
+            mock_col.__exit__ = Mock(return_value=None)
+            return mock_col
+            
+        def mock_columns_side_effect(spec):
+            if isinstance(spec, list) and len(spec) == 2:  # [3, 1]
+                return [create_mock_col(), create_mock_col()]
+            elif spec == 3:  # 3 colonnes
+                return [create_mock_col(), create_mock_col(), create_mock_col()]
+            else:
+                count = spec if isinstance(spec, int) else len(spec)
+                return [create_mock_col() for _ in range(count)]
+        
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.title'), \
+             patch('streamlit.columns', side_effect=mock_columns_side_effect), \
              patch('streamlit.divider'), \
              patch('streamlit.markdown'), \
              patch('streamlit.warning'), \
@@ -300,22 +361,38 @@ class TestSettingsPage:
             
             show_settings_page()
             
-            assert mock_session_state['page'] == 'dashboard'
+            assert mock_session_state.page == 'dashboard'
             mock_rerun.assert_called_once()
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.settings_page.require_auth')
     @patch('src.ui.views.settings_page.get_user_campaigns')
     @patch('streamlit.warning')
-    def test_show_settings_page_campaigns_error(self, mock_warning, mock_get_campaigns, 
-                                               mock_require_auth, mock_session_state):
+    def test_show_settings_page_campaigns_error(self, mock_warning, mock_get_campaigns, mock_require_auth):
         """Test settings - erreur chargement campagnes."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
         mock_get_campaigns.side_effect = Exception("Database error")
         
-        with patch('streamlit.title'), \
-             patch('streamlit.columns'), \
+        # Mock st.columns avec le bon nombre selon l'argument
+        def create_mock_col():
+            mock_col = Mock()
+            mock_col.__enter__ = Mock(return_value=mock_col)
+            mock_col.__exit__ = Mock(return_value=None)
+            return mock_col
+            
+        def mock_columns_side_effect(spec):
+            if isinstance(spec, list) and len(spec) == 2:  # [3, 1]
+                return [create_mock_col(), create_mock_col()]
+            elif spec == 3:  # 3 colonnes
+                return [create_mock_col(), create_mock_col(), create_mock_col()]
+            else:
+                count = spec if isinstance(spec, int) else len(spec)
+                return [create_mock_col() for _ in range(count)]
+        
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.title'), \
+             patch('streamlit.columns', side_effect=mock_columns_side_effect), \
              patch('streamlit.button'), \
              patch('streamlit.divider'), \
              patch('streamlit.markdown'), \
@@ -324,8 +401,11 @@ class TestSettingsPage:
             
             show_settings_page()
             
-            mock_warning.assert_called_once()
-            assert "Erreur lors du chargement des statistiques" in str(mock_warning.call_args)
+            # La fonction appelle warning 2 fois (erreur + conseil)
+            assert mock_warning.call_count == 2
+            # Vérifier que l'erreur est dans l'un des appels
+            call_args_list = [str(call) for call in mock_warning.call_args_list]
+            assert any("Erreur lors du chargement des statistiques" in call for call in call_args_list)
 
 
 class TestPerformancePage:
@@ -341,16 +421,16 @@ class TestPerformancePage:
         
         mock_require_auth.assert_called_once()
 
-    @patch('streamlit.session_state', new_callable=dict)
     @patch('src.ui.views.performance_page.require_auth')
     @patch('src.analytics.performance.show_performance')
-    def test_show_performance_page_success(self, mock_show_performance, mock_require_auth, 
-                                          mock_session_state):
+    def test_show_performance_page_success(self, mock_show_performance, mock_require_auth):
         """Test performance - succès."""
         mock_require_auth.return_value = True
-        mock_session_state['user'] = {'id': 1, 'email': 'test@example.com'}
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
         
-        show_performance_page()
+        with patch('streamlit.session_state', mock_session_state):
+            show_performance_page()
         
         mock_require_auth.assert_called_once()
         mock_show_performance.assert_called_once_with(1)
