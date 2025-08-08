@@ -98,5 +98,19 @@ python scripts/migrate_to_optimized.py --backup --validate
 
 ---
 
-**Statut :** 🟡 **En attente de validation utilisateur**  
-**Dernière mise à jour :** $(date)
+## 🔄 Schéma Base de Données – Version 4
+
+- Ajout de la colonne `ai_model` à la table `campaigns`
+- Migration idempotente: si la colonne existe déjà, aucun changement
+- Le chemin DB suit la priorité: `DATABASE_PATH` (env) → `DatabaseConfig.DB_PATH` (tests) → `DB_PATH` (module) → `database.db`
+
+## 🐳 Docker – Notes de déploiement
+
+- Le conteneur crée `/app/data` et `/app/logs` et lance l’app en root par défaut pour éviter les erreurs de permissions sur volumes bindés
+- Compose utilise un nom de projet stable: `comparemodelpoc_<environnement>` et `--remove-orphans` pour éviter les conflits au rebuild
+- Variables requises: `DATABASE_PATH=/app/data/database.db`, API keys (optionnelles)
+
+## ✅ État
+
+**Statut :** 🟢 Stable (itération en cours)
+**Dernière mise à jour :** automatique

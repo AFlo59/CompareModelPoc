@@ -54,7 +54,7 @@ cp .env.example .env
 # Éditer .env avec vos clés API
 
 # 4. Initialiser la base de données
-python -c \"from database import init_db; init_db()\"
+python -c \"from src.data.database import init_db; init_db()\"
 
 # 5. Lancer l'application
 python run_app.py
@@ -141,10 +141,10 @@ services:
 
 ```bash
 # Démarrage
-docker-compose up -d
+docker-compose -f docker/docker-compose.yml up -d --remove-orphans
 
 # Arrêt
-docker-compose down
+docker-compose -f docker/docker-compose.yml down --remove-orphans
 ```
 
 ## 🌐 Déploiement Production
@@ -222,7 +222,7 @@ cp /etc/letsencrypt/live/votre-domaine.com/fullchain.pem nginx/ssl/cert.pem
 cp /etc/letsencrypt/live/votre-domaine.com/privkey.pem nginx/ssl/key.pem
 
 # Redémarrer Nginx
-docker-compose restart nginx
+docker-compose -f docker/docker-compose.yml restart nginx
 ```
 
 ## ☁️ Déploiement Cloud
@@ -306,8 +306,8 @@ tar -czf backup/app_$(date +%Y%m%d).tar.gz data/ logs/
 ```bash
 # Mise à jour application
 git pull origin main
-docker-compose build
-docker-compose up -d
+docker-compose -f docker/docker-compose.yml build
+docker-compose -f docker/docker-compose.yml up -d --remove-orphans
 
 # Migration base de données (automatique)
 # La migration s'exécute au démarrage
@@ -404,7 +404,7 @@ export LOG_LEVEL=DEBUG
 streamlit run app.py
 
 # Logs détaillés Docker
-docker-compose logs -f app
+docker-compose -f docker/docker-compose.yml logs -f app
 ```
 
 ## 📈 Surveillance

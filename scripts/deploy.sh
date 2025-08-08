@@ -139,7 +139,7 @@ stop_services() {
 # Afficher les logs
 show_logs() {
     log_info "📋 Logs des services:"
-    docker-compose logs -f
+    $COMPOSE -f "$COMPOSE_FILE" logs -f
 }
 
 # Nettoyage complet

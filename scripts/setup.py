@@ -101,7 +101,8 @@ def install_dependencies() -> bool:
     """Installe les dépendances Python."""
     try:
         print("📦 Installation des dépendances...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements/requirements.txt"], check=True, capture_output=True)
+        req = "requirements/requirements.txt" if Path("requirements/requirements.txt").exists() else "requirements.txt"
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", req], check=True, capture_output=True)
         print("✅ Dépendances installées avec succès")
         return True
     except subprocess.CalledProcessError as e:

@@ -9,7 +9,6 @@ import argparse
 import os
 import subprocess
 import sys
-import yaml
 from pathlib import Path
 import shutil
 import tempfile
@@ -314,7 +313,7 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
     print_success("Application déployée avec Docker !")
     print(f"{Colors.OKBLUE}🌐 Accessible sur: http://localhost:8501{Colors.ENDC}")
     print(f"{Colors.OKCYAN}📋 Logs: docker-compose -f docker/docker-compose.yml logs -f{Colors.ENDC}")
-    print(f"{Colors.OKCYAN}🛑 Arrêt: docker-compose -f docker/docker-compose.yml down{Colors.ENDC}")
+    print(f"{Colors.OKCYAN}🛑 Arrêt: docker-compose -p {project_name} -f docker/docker-compose.yml down --remove-orphans{Colors.ENDC}")
     
     return True
 

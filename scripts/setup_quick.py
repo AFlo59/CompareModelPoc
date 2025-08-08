@@ -32,9 +32,10 @@ def main():
             subprocess.run([sys.executable, "-m", "venv", "venv"], check=True)
         
         # Installer les dépendances
-        pip_path = "venv/Scripts/pip" if os.name == 'nt' else "venv/bin/pip"
+        pip_path = "venv\\Scripts\\pip.exe" if os.name == 'nt' else "venv/bin/pip"
         print("Installation des dépendances...")
-        subprocess.run([pip_path, "install", "-r", "requirements.txt"], check=True)
+        requirements_file = "requirements/requirements.txt" if os.path.exists("requirements/requirements.txt") else "requirements.txt"
+        subprocess.run([pip_path, "install", "-r", requirements_file], check=True)
         
         # Créer .env si manquant
         if not Path(".env").exists():
