@@ -24,8 +24,7 @@ RUN pip install --no-cache-dir -r requirements/requirements.txt && \
 # Copier le code de l'application
 COPY . .
 
-# Initialiser la base de données
-RUN python -c "from src.data.database import init_db; init_db()" || echo "DB init will be done at runtime"
+# La base de données sera initialisée au runtime par l'application
 
 # Créer un utilisateur non-root pour la sécurité
 RUN useradd --create-home --shell /bin/bash appuser && \

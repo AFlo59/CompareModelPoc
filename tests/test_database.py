@@ -311,7 +311,14 @@ class TestInitOptimizedDb:
             assert not test_db_path.parent.exists()
             
             mock_conn = Mock()
+            # Configurer le cursor pour que fetchone() retourne une valeur valide
+            mock_cursor = Mock()
+            mock_cursor.fetchone.return_value = None  # Pas de version existante
+            mock_conn.cursor.return_value = mock_cursor
             mock_get_conn.return_value.__enter__.return_value = mock_conn
+            
+            # Configurer DatabaseConfig.SCHEMA_VERSION pour être un entier
+            mock_config.SCHEMA_VERSION = 4
             
             init_optimized_db()
             

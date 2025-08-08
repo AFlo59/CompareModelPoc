@@ -13,10 +13,12 @@ def show_settings_page() -> None:
 
     st.title("⚙️ Paramètres de l'application")
 
-    # Bouton retour au dashboard
-    if st.button("🏠 Retour au tableau de bord"):
-        st.session_state.page = "dashboard"
-        st.rerun()
+    # Bouton retour au dashboard - TOUJOURS accessible
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🏠 Retour au tableau de bord", use_container_width=True):
+            st.session_state.page = "dashboard"
+            st.rerun()
 
     st.divider()
 
@@ -25,12 +27,13 @@ def show_settings_page() -> None:
     user_email = st.session_state.user.get("email", "Non défini")
     st.info(f"**Email :** {user_email}")
 
-    # Statistiques globales
+    # Statistiques globales avec gestion d'erreur robuste
     try:
         campaigns = get_user_campaigns(st.session_state.user["id"])
         total_campaigns = len(campaigns)
         total_messages = sum(camp.get("message_count", 0) for camp in campaigns)
-    except:
+    except Exception as e:
+        st.warning(f"⚠️ Erreur lors du chargement des statistiques: {e}")
         total_campaigns = 0
         total_messages = 0
 
@@ -50,12 +53,13 @@ def show_settings_page() -> None:
     # Modèles disponibles (devrait être importé de config)
     available_models = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]
     
-    # Modèle actuellement sélectionné
+    # Modèle actuellement sélectionné avec gestion d'erreur
     try:
         current_model = get_user_model_choice(st.session_state.user["id"])
         if current_model not in available_models:
             current_model = available_models[0]  # Fallback
-    except:
+    except Exception as e:
+        st.warning(f"⚠️ Erreur lors du chargement du modèle: {e}")
         current_model = available_models[0]
 
     # Sélecteur de modèle par défaut
@@ -68,10 +72,20 @@ def show_settings_page() -> None:
 
     if st.button("💾 Sauvegarder les préférences"):
         try:
+            # Tentative de sauvegarde avec gestion robuste
             save_model_choice(st.session_state.user["id"], selected_model)
             st.success(f"✅ Modèle par défaut sauvegardé : {selected_model}")
+            
+            # Forcer le rafraîchissement du cache
+            st.rerun()
+            
         except Exception as e:
             st.error(f"❌ Erreur lors de la sauvegarde : {e}")
+            st.warning("💡 **Conseil :** Essayez de rafraîchir la page ou de vous déconnecter/reconnecter")
+            
+            # Bouton de récupération d'erreur
+            if st.button("🔄 Rafraîchir la page"):
+                st.rerun()
 
     # Informations sur les modèles
     st.divider()

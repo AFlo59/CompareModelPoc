@@ -43,12 +43,16 @@ class TestAPIClientManager:
         assert mock_openai.call_count == 1
 
     def test_get_openai_client_no_api_key(self):
-        """Test d'erreur quand la clé API OpenAI est manquante."""
+        """Test de retour None quand la clé API OpenAI est manquante."""
+        # Nettoyer le cache avant le test
+        APIClientManager.get_openai_client.cache_clear()
+        APIClientManager._openai_client = None
+        
         # Supprimer explicitement toutes les clés API possibles
         env_clear = {key: "" for key in os.environ.keys() if 'API_KEY' in key}
         with patch.dict(os.environ, env_clear, clear=False):
-            with pytest.raises(ValueError, match="OPENAI_API_KEY n'est pas définie"):
-                APIClientManager.get_openai_client()
+            client = APIClientManager.get_openai_client()
+            assert client is None
 
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-anthropic-key"})
     @patch("src.ai.api_client.anthropic.Anthropic")
@@ -67,12 +71,16 @@ class TestAPIClientManager:
         assert mock_anthropic.call_count == 1
 
     def test_get_anthropic_client_no_api_key(self):
-        """Test d'erreur quand la clé API Anthropic est manquante."""
+        """Test de retour None quand la clé API Anthropic est manquante."""
+        # Nettoyer le cache avant le test
+        APIClientManager.get_anthropic_client.cache_clear()
+        APIClientManager._anthropic_client = None
+        
         # Supprimer explicitement toutes les clés API possibles
         env_clear = {key: "" for key in os.environ.keys() if 'API_KEY' in key}
         with patch.dict(os.environ, env_clear, clear=False):
-            with pytest.raises(ValueError, match="ANTHROPIC_API_KEY n'est pas définie"):
-                APIClientManager.get_anthropic_client()
+            client = APIClientManager.get_anthropic_client()
+            assert client is None
 
     @patch.dict(os.environ, {
         "OPENAI_API_KEY": "test-openai",
@@ -90,7 +98,7 @@ class TestAPIClientManager:
         }
         assert status == expected
 
-    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-openai"})
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-openai"}, clear=True)
     def test_validate_api_keys_partial(self):
         """Test de validation avec seulement certaines clés."""
         status = APIClientManager.validate_api_keys()
