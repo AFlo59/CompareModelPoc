@@ -7,7 +7,7 @@ import pytest
 # Ajout du chemin pour les imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from chatbot import get_last_model, get_previous_history, store_message, store_performance
+from src.ai.chatbot import get_last_model, get_previous_history, store_message, store_performance
 
 
 class TestChatbot:
@@ -18,7 +18,7 @@ class TestChatbot:
         user_id = sample_user["id"]
 
         # Créer une campagne pour les tests
-        from models import create_campaign
+        from src.data.models import create_campaign
 
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
 
@@ -26,7 +26,7 @@ class TestChatbot:
         store_message(user_id, "user", "Hello world!", campaign_id)
 
         # Vérifier en base
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -47,7 +47,7 @@ class TestChatbot:
         store_message(user_id, "assistant", "Bonjour !")
 
         # Vérifier en base
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -65,7 +65,7 @@ class TestChatbot:
         user_id = sample_user["id"]
 
         # Créer une campagne
-        from models import create_campaign
+        from src.data.models import create_campaign
 
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
 
@@ -73,7 +73,7 @@ class TestChatbot:
         store_performance(user_id, "GPT-4", 1.5, 100, 50, campaign_id)
 
         # Vérifier en base
-        from database import get_connection
+        from src.data.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -101,7 +101,7 @@ class TestChatbot:
         assert model == "GPT-4"
 
         # Sauvegarder un modèle
-        from models import save_model_choice
+        from src.data.models import save_model_choice
 
         save_model_choice(user_id, "Claude 3.5 Sonnet")
 
@@ -133,10 +133,10 @@ class TestChatbot:
         assert history[2]["content"] == "Message 2"
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key-openai"})
-    @patch("chatbot.get_openai_client")
+    @patch("src.ai.chatbot.get_openai_client")
     def test_call_ai_model_gpt4(self, mock_client):
         """Test d'appel du modèle GPT-4."""
-        from chatbot import call_ai_model
+        from src.ai.chatbot import call_ai_model
 
         # Mock de la réponse OpenAI
         mock_response = MagicMock()
@@ -161,10 +161,10 @@ class TestChatbot:
         mock_client_instance.chat.completions.create.assert_called_once()
 
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-anthropic"})
-    @patch("chatbot.get_anthropic_client")
+    @patch("src.ai.chatbot.get_anthropic_client")
     def test_call_ai_model_claude(self, mock_client):
         """Test d'appel du modèle Claude."""
-        from chatbot import call_ai_model
+        from src.ai.chatbot import call_ai_model
 
         # Mock de la réponse Anthropic
         mock_response = MagicMock()
@@ -191,9 +191,9 @@ class TestChatbot:
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key-openai"})
     def test_call_ai_model_unsupported_fallback(self):
         """Test de fallback vers GPT-4 pour un modèle non supporté."""
-        from chatbot import call_ai_model
+        from src.ai.chatbot import call_ai_model
 
-        with patch("chatbot.get_openai_client") as mock_client:
+        with patch("src.ai.chatbot.get_openai_client") as mock_client:
             # Mock de la réponse OpenAI pour le fallback
             mock_response = MagicMock()
             mock_response.choices[0].message.content = "Fallback response"

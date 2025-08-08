@@ -7,13 +7,13 @@ import pytest
 # Ajout du chemin pour les imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from portraits import generate_portrait, get_openai_client
+from src.ai.portraits import generate_portrait, get_openai_client
 
 
 class TestPortraitGeneration:
     """Tests pour la génération de portraits."""
 
-    @patch("portraits.get_openai_client")
+    @patch("src.ai.portraits.get_openai_client")
     def test_generate_portrait_success(self, mock_get_client):
         """Test de génération réussie d'un portrait."""
         # Configuration du mock
@@ -37,7 +37,7 @@ class TestPortraitGeneration:
         assert "dall-e-3" in str(call_args)
         assert "Elric" in str(call_args)
 
-    @patch("portraits.get_openai_client")
+    @patch("src.ai.portraits.get_openai_client")
     def test_generate_portrait_api_error(self, mock_get_client):
         """Test de gestion d'erreur API."""
         # Configuration du mock pour lever une exception
@@ -62,7 +62,7 @@ class TestPortraitGeneration:
         url = generate_portrait(None, "description")
         assert url is None
 
-    @patch("portraits.get_openai_client")
+    @patch("src.ai.portraits.get_openai_client")
     def test_generate_portrait_no_description(self, mock_get_client):
         """Test sans description."""
         mock_client = MagicMock()
@@ -76,7 +76,7 @@ class TestPortraitGeneration:
         url = generate_portrait("TestCharacter")
         assert url == "https://example.com/image.png"
 
-    @patch("portraits.os.getenv")
+    @patch("src.ai.api_client.os.getenv")
     def test_get_openai_client_no_api_key(self, mock_getenv):
         """Test d'initialisation du client sans clé API."""
         mock_getenv.return_value = None
@@ -84,8 +84,8 @@ class TestPortraitGeneration:
         with pytest.raises(ValueError, match="OPENAI_API_KEY n'est pas définie"):
             get_openai_client()
 
-    @patch("portraits.os.getenv")
-    @patch("portraits.OpenAI")
+    @patch("src.ai.api_client.os.getenv")
+    @patch("src.ai.api_client.OpenAI")
     def test_get_openai_client_success(self, mock_openai, mock_getenv):
         """Test d'initialisation réussie du client."""
         mock_getenv.return_value = "test-api-key"

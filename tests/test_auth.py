@@ -8,8 +8,8 @@ import pytest
 # Ajout du chemin pour les imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from auth import validate_email, validate_password
-from database import get_connection
+from src.auth.auth import validate_email, validate_password
+from src.data.database import get_connection
 
 
 class TestAuthentication:
@@ -61,26 +61,24 @@ class TestAuthentication:
 
     def test_user_creation_and_auth(self, clean_db):
         """Test de création d'utilisateur et d'authentification."""
-        from database import get_connection
+        from src.data.database import get_connection
 
         # Créer un utilisateur
         email = "test@example.com"
         password = "TestPassword123"
         hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed))
-        user_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed))
+            user_id = cursor.lastrowid
+            conn.commit()
 
         # Vérifier que l'utilisateur existe
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, email, password FROM users WHERE email = ?", (email,))
-        result = cursor.fetchone()
-        conn.close()
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, email, password FROM users WHERE email = ?", (email,))
+            result = cursor.fetchone()
 
         assert result is not None
         assert result[0] == user_id
