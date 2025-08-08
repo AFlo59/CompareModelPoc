@@ -23,24 +23,26 @@ class APIClientManager:
     
     @classmethod
     @lru_cache(maxsize=1)
-    def get_openai_client(cls) -> OpenAI:
-        """Retourne un client OpenAI mis en cache."""
+    def get_openai_client(cls) -> Optional[OpenAI]:
+        """Retourne un client OpenAI mis en cache, ou None si clé manquante."""
         if cls._openai_client is None:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                raise ValueError("OPENAI_API_KEY n'est pas définie dans les variables d'environnement")
+                logger.warning("OPENAI_API_KEY n'est pas définie dans les variables d'environnement")
+                return None
             cls._openai_client = OpenAI(api_key=api_key)
             logger.info("Client OpenAI initialisé")
         return cls._openai_client
     
     @classmethod
     @lru_cache(maxsize=1)
-    def get_anthropic_client(cls) -> anthropic.Anthropic:
-        """Retourne un client Anthropic mis en cache."""
+    def get_anthropic_client(cls) -> Optional[anthropic.Anthropic]:
+        """Retourne un client Anthropic mis en cache, ou None si clé manquante."""
         if cls._anthropic_client is None:
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY n'est pas définie dans les variables d'environnement")
+                logger.warning("ANTHROPIC_API_KEY n'est pas définie dans les variables d'environnement")
+                return None
             cls._anthropic_client = anthropic.Anthropic(api_key=api_key)
             logger.info("Client Anthropic initialisé")
         return cls._anthropic_client
@@ -60,10 +62,10 @@ class APIClientManager:
         return status
 
 # Fonctions d'accès simplifiées (rétrocompatibilité)
-def get_openai_client() -> OpenAI:
+def get_openai_client() -> Optional[OpenAI]:
     """Fonction d'accès simple au client OpenAI."""
     return APIClientManager.get_openai_client()
 
-def get_anthropic_client() -> anthropic.Anthropic:
+def get_anthropic_client() -> Optional[anthropic.Anthropic]:
     """Fonction d'accès simple au client Anthropic."""
     return APIClientManager.get_anthropic_client()

@@ -10,12 +10,23 @@ def determine_user_next_page(user_id: int) -> str:
     """Détermine la prochaine page à afficher selon l'état de l'utilisateur."""
     try:
         campaigns = get_user_campaigns(user_id)
-        return "chatbot" if campaigns else "campaign"
+        # Si l'utilisateur a des campagnes, aller au dashboard
+        # Sinon, l'inviter à créer une campagne
+        return "dashboard" if campaigns else "campaign"
     except Exception:
-        return "dashboard"  # Fallback sécurisé vers le dashboard
+        # En cas d'erreur, rediriger vers dashboard (sécurisé)
+        return "dashboard"
 
 def show_auth_page() -> None:
     """Affiche la page d'authentification."""
+    # Vérifier si l'utilisateur est déjà connecté
+    if "user" in st.session_state and st.session_state.user:
+        # Rediriger automatiquement si déjà connecté
+        next_page = determine_user_next_page(st.session_state.user["id"])
+        st.session_state.page = next_page
+        st.rerun()
+        return
+    
     st.markdown(
         '<div class="main-header"><h1>🎲 DnD AI GameMaster</h1><p>Votre assistant IA pour des aventures épiques</p></div>',
         unsafe_allow_html=True,

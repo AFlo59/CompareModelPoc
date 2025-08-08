@@ -59,7 +59,7 @@ class TestPageImports:
     def test_import_auth_page(self):
         """Test d'import de la page d'authentification."""
         try:
-            from src.ui.pages.auth_page import show_auth_page, determine_user_next_page
+            from src.ui.views.auth_page import show_auth_page, determine_user_next_page
             assert callable(show_auth_page)
             assert callable(determine_user_next_page)
         except ImportError as e:
@@ -68,7 +68,7 @@ class TestPageImports:
     def test_import_dashboard_page(self):
         """Test d'import de la page dashboard."""
         try:
-            from src.ui.pages.dashboard_page import show_dashboard_page
+            from src.ui.views.dashboard_page import show_dashboard_page
             assert callable(show_dashboard_page)
         except ImportError as e:
             pytest.fail(f"Import failed: {e}")
@@ -76,7 +76,7 @@ class TestPageImports:
     def test_import_chatbot_page(self):
         """Test d'import de la page chatbot."""
         try:
-            from src.ui.pages.chatbot_page import show_chatbot_page
+            from src.ui.views.chatbot_page import show_chatbot_page
             assert callable(show_chatbot_page)
         except ImportError as e:
             pytest.fail(f"Import failed: {e}")
@@ -84,7 +84,7 @@ class TestPageImports:
     def test_import_performance_page(self):
         """Test d'import de la page performance."""
         try:
-            from src.ui.pages.performance_page import show_performance_page
+            from src.ui.views.performance_page import show_performance_page
             assert callable(show_performance_page)
         except ImportError as e:
             pytest.fail(f"Import failed: {e}")
@@ -92,7 +92,7 @@ class TestPageImports:
     def test_import_settings_page(self):
         """Test d'import de la page settings."""
         try:
-            from src.ui.pages.settings_page import show_settings_page
+            from src.ui.views.settings_page import show_settings_page
             assert callable(show_settings_page)
         except ImportError as e:
             pytest.fail(f"Import failed: {e}")
@@ -101,21 +101,21 @@ class TestPageImports:
 class TestAuthPageFunctions:
     """Tests pour les fonctions de la page d'authentification."""
 
-    @patch('src.ui.pages.auth_page.get_user_campaigns')
+    @patch('src.ui.views.auth_page.get_user_campaigns')
     def test_determine_user_next_page_with_campaigns(self, mock_get_campaigns):
         """Test de détermination de page avec campagnes existantes."""
-        from src.ui.pages.auth_page import determine_user_next_page
+        from src.ui.views.auth_page import determine_user_next_page
         
         # Utilisateur avec campagnes
         mock_get_campaigns.return_value = [{"id": 1, "name": "Test Campaign"}]
         
         result = determine_user_next_page(123)
-        assert result == "chatbot"
+        assert result == "dashboard"
 
-    @patch('src.ui.pages.auth_page.get_user_campaigns')
+    @patch('src.ui.views.auth_page.get_user_campaigns')
     def test_determine_user_next_page_without_campaigns(self, mock_get_campaigns):
         """Test de détermination de page sans campagnes."""
-        from src.ui.pages.auth_page import determine_user_next_page
+        from src.ui.views.auth_page import determine_user_next_page
         
         # Utilisateur sans campagnes
         mock_get_campaigns.return_value = []
@@ -123,10 +123,10 @@ class TestAuthPageFunctions:
         result = determine_user_next_page(123)
         assert result == "campaign"
 
-    @patch('src.ui.pages.auth_page.get_user_campaigns')
+    @patch('src.ui.views.auth_page.get_user_campaigns')
     def test_determine_user_next_page_error(self, mock_get_campaigns):
         """Test de détermination de page en cas d'erreur."""
-        from src.ui.pages.auth_page import determine_user_next_page
+        from src.ui.views.auth_page import determine_user_next_page
         
         # Erreur lors de la récupération des campagnes
         mock_get_campaigns.side_effect = Exception("Database error")
@@ -166,6 +166,8 @@ class TestAppRefactored:
         from src.ui.app import initialize_app
         
         mock_init_db.side_effect = Exception("Database error")
+        # Configurer st.stop pour lever SystemExit comme Streamlit le fait réellement
+        mock_st.stop.side_effect = SystemExit("Streamlit stop")
         
         with pytest.raises(SystemExit):  # st.stop() lève SystemExit
             initialize_app()
@@ -182,12 +184,12 @@ class TestModuleStructure:
         """Test de la structure du package UI."""
         import src.ui
         import src.ui.components
-        import src.ui.pages
+        import src.ui.views
         
         # Vérifier que les packages peuvent être importés
         assert hasattr(src.ui, '__path__')
         assert hasattr(src.ui.components, '__path__')
-        assert hasattr(src.ui.pages, '__path__')
+        assert hasattr(src.ui.views, '__path__')
 
     def test_components_init_file(self):
         """Test du fichier __init__.py des composants."""
@@ -200,7 +202,7 @@ class TestModuleStructure:
     def test_pages_init_file(self):
         """Test du fichier __init__.py des pages."""
         try:
-            from src.ui.pages import __doc__
+            from src.ui.views import __doc__
             assert isinstance(__doc__, str)
         except ImportError:
             pytest.fail("Pages __init__.py not found")
@@ -218,12 +220,12 @@ class TestModuleStructure:
 class TestPageFunctionalities:
     """Tests fonctionnels pour les pages."""
 
-    @patch('src.ui.pages.dashboard_page.get_user_campaigns')
-    @patch('src.ui.pages.dashboard_page.require_auth')
-    @patch('src.ui.pages.dashboard_page.st')
+    @patch('src.ui.views.dashboard_page.get_user_campaigns')
+    @patch('src.ui.views.dashboard_page.require_auth')
+    @patch('src.ui.views.dashboard_page.st')
     def test_dashboard_page_unauthorized(self, mock_st, mock_require_auth, mock_get_campaigns):
         """Test de la page dashboard sans autorisation."""
-        from src.ui.pages.dashboard_page import show_dashboard_page
+        from src.ui.views.dashboard_page import show_dashboard_page
         
         mock_require_auth.return_value = False
         
@@ -234,12 +236,12 @@ class TestPageFunctionalities:
         # get_user_campaigns ne doit pas être appelé
         mock_get_campaigns.assert_not_called()
 
-    @patch('src.ui.pages.performance_page.require_auth')
-    @patch('src.ui.pages.performance_page.show_performance')
-    @patch('src.ui.pages.performance_page.st')
+    @patch('src.ui.views.performance_page.require_auth')
+    @patch('src.ui.views.performance_page.show_performance')
+    @patch('src.ui.views.performance_page.st')
     def test_performance_page_authorized(self, mock_st, mock_show_performance, mock_require_auth):
         """Test de la page performance avec autorisation."""
-        from src.ui.pages.performance_page import show_performance_page
+        from src.ui.views.performance_page import show_performance_page
         
         mock_require_auth.return_value = True
         mock_st.session_state.user = {"id": 123}
@@ -249,12 +251,12 @@ class TestPageFunctionalities:
         mock_require_auth.assert_called_once()
         mock_show_performance.assert_called_once_with(123)
 
-    @patch('src.ui.pages.settings_page.require_auth')
-    @patch('src.ui.pages.settings_page.get_user_model_choice')
-    @patch('src.ui.pages.settings_page.st')
+    @patch('src.ui.views.settings_page.require_auth')
+    @patch('src.ui.views.settings_page.get_user_model_choice')
+    @patch('src.ui.views.settings_page.st')
     def test_settings_page_load_model_choice(self, mock_st, mock_get_model_choice, mock_require_auth):
         """Test de chargement du choix de modèle dans les paramètres."""
-        from src.ui.pages.settings_page import show_settings_page
+        from src.ui.views.settings_page import show_settings_page
         
         mock_require_auth.return_value = True
         mock_st.session_state.user = {"id": 123}
@@ -263,6 +265,16 @@ class TestPageFunctionalities:
         # Mock des éléments Streamlit
         mock_st.selectbox.return_value = "Claude 3.5 Sonnet"
         mock_st.button.return_value = False
+        # Configurer st.columns pour retourner le bon nombre d'objets mock selon l'appel
+        from unittest.mock import MagicMock
+        def mock_columns(spec):
+            if isinstance(spec, list) and len(spec) == 2:
+                return [MagicMock(), MagicMock()]
+            elif spec == 3:
+                return [MagicMock(), MagicMock(), MagicMock()]
+            else:
+                return [MagicMock(), MagicMock()]  # Défaut
+        mock_st.columns.side_effect = mock_columns
         
         show_settings_page()
         

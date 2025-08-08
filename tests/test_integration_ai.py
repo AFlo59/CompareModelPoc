@@ -320,10 +320,25 @@ class TestCallAIModelOptimized:
         assert mock_get_config.call_count == 2
         mock_call_openai.assert_called_once_with(fallback_config, messages, None)
 
+    @patch('src.ai.chatbot.APIManager.call_openai_model')
     @patch('src.ai.chatbot.get_model_config')
-    def test_call_ai_model_optimized_unexpected_error(self, mock_get_config):
+    def test_call_ai_model_optimized_unexpected_error(self, mock_get_config, mock_call_openai):
         """Test de gestion d'erreur inattendue."""
-        mock_get_config.side_effect = Exception("Unexpected error")
+        # Configurer un modèle valide mais l'appel API échoue avec une erreur inattendue
+        from src.ai.models_config import ModelConfig, ModelProvider
+        mock_config = ModelConfig(
+            name="GPT-4",
+            api_name="gpt-4",
+            provider=ModelProvider.OPENAI.value,
+            max_tokens=4000,
+            temperature_default=0.7,
+            cost_per_1k_input=0.03,
+            cost_per_1k_output=0.06,
+            description="GPT-4 model for testing",
+            supports_system_messages=True
+        )
+        mock_get_config.return_value = mock_config
+        mock_call_openai.side_effect = Exception("API connection failed")
         
         messages = [{"role": "user", "content": "Test"}]
         
