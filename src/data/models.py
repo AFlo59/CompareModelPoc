@@ -554,9 +554,13 @@ def get_user_characters(user_id: int) -> List[Dict]:
     """Récupération des personnages (compatibilité)."""
     return CharacterManager.get_user_characters(user_id)
 
-def get_campaign_messages(user_id: int, campaign_id: Optional[int] = None) -> List[Dict]:
+def get_campaign_messages(user_id: int, campaign_id: Optional[int] = None, limit: int = 50) -> List[Dict]:
     """Récupération des messages (compatibilité)."""
-    return MessageManager.get_campaign_messages(user_id, campaign_id)
+    return MessageManager.get_campaign_messages(user_id, campaign_id, limit)
+
+def store_message(user_id: int, role: str, content: str, campaign_id: Optional[int] = None) -> int:
+    """Stockage de message (compatibilité)."""
+    return MessageManager.store_message(user_id, role, content, campaign_id)
 
 def update_campaign_portrait(campaign_id: int, gm_portrait_url: str) -> bool:
     """Mise à jour du portrait MJ (compatibilité)."""

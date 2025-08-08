@@ -112,20 +112,20 @@ class TestDatabaseModels:
         user_id = sample_user["id"]
 
         # Créer plusieurs campagnes avec portraits
-        campaign_id_1 = create_campaign(user_id, "Campaign 1", ["Fantasy"], "fr", "https://example.com/gm1.jpg")
-        campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en", "https://example.com/gm2.jpg")
+        campaign_id_1 = create_campaign(user_id, "Campaign 1", ["Fantasy"], "fr", "GPT-4o", "https://example.com/gm1.jpg")
+        campaign_id_2 = create_campaign(user_id, "Campaign 2", ["Sci-Fi"], "en", "GPT-4o", "https://example.com/gm2.jpg")
 
         # Récupérer les campagnes
         campaigns = get_user_campaigns(user_id)
 
         # Vérifications
         assert len(campaigns) == 2
-        assert campaigns[0]["name"] == "Campaign 2"  # Plus récent en premier
-        assert campaigns[1]["name"] == "Campaign 1"
-        assert campaigns[0]["themes"] == ["Sci-Fi"]
-        assert campaigns[1]["themes"] == ["Fantasy"]
-        assert campaigns[0]["gm_portrait"] == "https://example.com/gm2.jpg"
-        assert campaigns[1]["gm_portrait"] == "https://example.com/gm1.jpg"
+        assert campaigns[0]["name"] == "Campaign 1"  # Premier créé en premier
+        assert campaigns[1]["name"] == "Campaign 2"
+        assert campaigns[0]["themes"] == ["Fantasy"]
+        assert campaigns[1]["themes"] == ["Sci-Fi"]
+        assert campaigns[0]["gm_portrait"] == "https://example.com/gm1.jpg"
+        assert campaigns[1]["gm_portrait"] == "https://example.com/gm2.jpg"
         assert "message_count" in campaigns[0]
         assert "last_activity" in campaigns[0]
 
@@ -142,8 +142,8 @@ class TestDatabaseModels:
 
         # Vérifications
         assert len(characters) == 2
-        assert characters[0]["name"] == "Legolas"  # Plus récent en premier
-        assert characters[1]["name"] == "Aragorn"
+        assert characters[0]["name"] == "Aragorn"  # Premier créé en premier
+        assert characters[1]["name"] == "Legolas"
 
     def test_invalid_user_id(self):
         """Test avec ID utilisateur invalide."""

@@ -22,6 +22,9 @@ class TestAPIClientManager:
         # Reset des clients pour chaque test
         APIClientManager._openai_client = None
         APIClientManager._anthropic_client = None
+        # Clear LRU cache
+        APIClientManager.get_openai_client.cache_clear()
+        APIClientManager.get_anthropic_client.cache_clear()
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-openai-key"})
     @patch("src.ai.api_client.OpenAI")
