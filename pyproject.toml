@@ -41,6 +41,13 @@ dev = [
     "pyyaml>=6.0.0"
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+src = ["**/*.py"]
+
 [tool.black]
 line-length = 127
 target-version = ['py310']
