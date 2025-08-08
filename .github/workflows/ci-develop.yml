@@ -93,4 +93,3 @@ jobs:
 
     - name: Type check with mypy
       run: mypy src/ --ignore-missing-imports --check-untyped-defs --exclude="(migrations|__pycache__)" || true
-
