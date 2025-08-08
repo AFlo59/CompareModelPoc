@@ -39,6 +39,24 @@ jobs:
         pip install -r requirements/dev-requirements.txt
         pip install -e .
 
+    - name: Verify Python environment and package installation
+      run: |
+        echo "=== Python Environment ==="
+        python --version
+        echo "=== Working Directory ==="
+        pwd
+        echo "=== Directory Contents ==="
+        ls -la
+        echo "=== Python Path ==="
+        python -c "import sys; print('\n'.join(sys.path))"
+        echo "=== Checking src directory ==="
+        ls -la src/
+        echo "=== Checking installed packages ==="
+        pip list | grep compare-model-poc || echo "Package not found in pip list"
+        echo "=== Testing direct import ==="
+        export PYTHONPATH="${GITHUB_WORKSPACE}:$PYTHONPATH"
+        python -c "import sys; sys.path.insert(0, '${GITHUB_WORKSPACE}'); from src.data.database import get_connection; print('✅ Import successful with explicit path')"
+
     - name: Run unit tests with coverage
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key-placeholder' }}
@@ -46,8 +64,9 @@ jobs:
         DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY || 'test-key-placeholder' }}
         PYTHONPATH: ${{ github.workspace }}
       run: |
-        python -c "from src.data.database import get_connection; print('✅ Import test successful')"
-        pytest tests/ --maxfail=3 --disable-warnings -v --cov=src --cov-report=xml --cov-report=term-missing --cov-fail-under=80
+        export PYTHONPATH="${GITHUB_WORKSPACE}:$PYTHONPATH"
+        python -c "import sys; sys.path.insert(0, '${GITHUB_WORKSPACE}'); from src.data.database import get_connection; print('✅ Import test successful')"
+        PYTHONPATH="${GITHUB_WORKSPACE}:$PYTHONPATH" pytest tests/ --maxfail=3 --disable-warnings -v --cov=src --cov-report=xml --cov-report=term-missing --cov-fail-under=80
 
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.10'
