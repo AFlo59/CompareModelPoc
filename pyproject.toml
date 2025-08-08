@@ -42,11 +42,10 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
 
 [tool.setuptools.package-data]
-src = ["**/*.py"]
+"*" = ["**/*.py"]
 
 [tool.black]
 line-length = 127
