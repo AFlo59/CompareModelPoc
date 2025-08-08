@@ -423,13 +423,16 @@ class TestPerformancePage:
 
     @patch('src.ui.views.performance_page.require_auth')
     @patch('src.analytics.performance.show_performance')
-    def test_show_performance_page_success(self, mock_show_performance, mock_require_auth):
+    @patch('streamlit.button')
+    def test_show_performance_page_success(self, mock_button, mock_show_performance, mock_require_auth):
         """Test performance - succès."""
         mock_require_auth.return_value = True
         mock_session_state = Mock()
         mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
+        mock_button.return_value = False  # Aucun bouton cliqué
         
-        with patch('streamlit.session_state', mock_session_state):
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.divider'):
             show_performance_page()
         
         mock_require_auth.assert_called_once()

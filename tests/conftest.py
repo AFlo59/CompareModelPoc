@@ -66,10 +66,14 @@ def test_db():
 @pytest.fixture
 def clean_db(test_db):
     """Fixture pour nettoyer la base de données entre les tests."""
-    from src.data.database import get_optimized_connection
-
+    from src.data.database import DatabaseConnection
+    
+    # Forcer une nouvelle connexion pour éviter les problèmes de connexion fermée
+    DatabaseConnection._connection = None
+    
     # Nettoyer toutes les tables avant le test
     try:
+        from src.data.database import get_optimized_connection
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
 
@@ -85,13 +89,19 @@ def clean_db(test_db):
 
     yield
 
-    # Optionnel: nettoyer après le test aussi
+    # Nettoyer après le test et fermer la connexion proprement
     try:
+        from src.data.database import get_optimized_connection
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
             for table in tables:
                 cursor.execute(f"DELETE FROM {table}")
             conn.commit()
+        
+        # Fermer et réinitialiser la connexion pour le test suivant
+        if DatabaseConnection._connection:
+            DatabaseConnection._connection.close()
+            DatabaseConnection._connection = None
     except Exception as e:
         # En cas d'erreur, ne pas faire échouer le test
         print(f"Warning: Could not clean database after test: {e}")
@@ -101,10 +111,14 @@ def clean_db(test_db):
 def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
     import bcrypt
-    from src.data.database import get_optimized_connection
+    from src.data.database import get_optimized_connection, DatabaseConnection
 
     # S'assurer que la DB est bien initialisée avec le bon schéma
     try:
+        # Forcer une nouvelle connexion si nécessaire
+        if DatabaseConnection._connection is None:
+            DatabaseConnection._connection = None
+            
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
 
@@ -129,4 +143,6 @@ def sample_user(clean_db):
     except Exception as e:
         # Ne pas skip, mais plutôt lever l'erreur pour voir ce qui ne va pas
         print(f"Error creating sample user: {e}")
+        # Essayer de réinitialiser la connexion et réessayer
+        DatabaseConnection._connection = None
         raise

@@ -27,7 +27,7 @@ class TestAPIClientManager:
         APIClientManager.get_anthropic_client.cache_clear()
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-openai-key"})
-    @patch("openai.OpenAI")
+    @patch("src.ai.api_client.OpenAI")
     def test_get_openai_client_success(self, mock_openai):
         """Test de création réussie du client OpenAI."""
         mock_client = Mock()
