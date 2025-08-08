@@ -172,4 +172,40 @@ class TestChatbotPage:
             _launch.assert_called_once()
             mock_perf.assert_called_once_with(1)
 
+    @patch('src.ui.views.chatbot_page.require_auth', return_value=True)
+    @patch('src.ui.views.chatbot_page.launch_chat_interface')
+    @patch('src.ui.views.chatbot_page.get_campaign_messages')
+    @patch('src.ui.views.chatbot_page.get_user_campaigns')
+    @patch('src.ui.views.chatbot_page.st')
+    def test_chatbot_quick_switch_campaign(self, mock_st, mock_get_camps, mock_get_msgs, _launch, _auth):
+        from src.ui.views.chatbot_page import show_chatbot_page
+
+        # Préparer deux campagnes pour activer le selectbox et le bouton changer
+        camps = [
+            {"id": 1, "name": "A", "language": "fr", "themes": [], "message_count": 1},
+            {"id": 2, "name": "B", "language": "fr", "themes": [], "message_count": 2},
+        ]
+        mock_get_camps.return_value = camps
+        mock_get_msgs.return_value = [{"role": "user", "content": "c"}]
+
+        class SessionLike(dict):
+            def __contains__(self, key):
+                return dict.__contains__(self, key) or hasattr(self, key)
+        s = SessionLike()
+        s.user = {"id": 1}
+        s.campaign = camps[0]
+        mock_st.session_state = s
+
+        mock_st.columns.side_effect = lambda spec: [_mk_col() for _ in range(len(spec) if isinstance(spec, list) else spec)]
+        mock_st.sidebar.__enter__ = Mock(return_value=mock_st)
+        mock_st.sidebar.__exit__ = Mock(return_value=None)
+        mock_st.tabs.return_value = [_mk_col(), _mk_col(), _mk_col()]
+        # Simuler un selectbox et un clic sur changer
+        mock_st.selectbox.return_value = "A (1 msg)"
+        mock_st.button.side_effect = lambda label, **kw: "🔁 Changer" in label
+
+        show_chatbot_page()
+        # Après changement, st.session_state.campaign doit être mis à jour
+        assert mock_st.session_state.campaign == camps[0]
+
 

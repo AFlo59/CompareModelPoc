@@ -33,6 +33,29 @@ class SessionLike(dict):
 
 
 class TestChatbotLaunchFlow:
+    @patch("src.ai.chatbot.st")
+    @patch("src.data.models.get_user_model_choice", side_effect=Exception("boom"))
+    def test_history_display_and_default_model_fallback(self, _mock_choice, mock_st):
+        from src.ai.chatbot import launch_chat_interface
+
+        # Préparer un historique existant pour couvrir l'affichage (lignes 215-216)
+        sess = SessionLike()
+        sess.campaign = {"id": 9}
+        sess.history = [
+            {"role": "user", "content": "Hi"},
+            {"role": "assistant", "content": "Hello"},
+        ]
+        mock_st.session_state = sess
+
+        # UI sans saisie utilisateur
+        mock_st.columns.side_effect = lambda spec: [_ctx() for _ in range(len(spec) if isinstance(spec, list) else spec)]
+        mock_st.selectbox.return_value = "GPT-4"  # peu importe ici
+        mock_st.chat_input.return_value = None
+        mock_st.chat_message.side_effect = lambda role: _ctx()
+
+        # L'appel ne doit pas lever et doit parcourir l'historique
+        launch_chat_interface(1)
+
     @patch("src.ai.chatbot.calculate_estimated_cost", return_value=0.1234)
     @patch("src.ai.chatbot.store_performance_optimized")
     @patch("src.ai.chatbot.store_message_optimized")

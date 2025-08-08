@@ -261,6 +261,47 @@ class TestDashboardPage:
             assert mock_session_state.page == 'campaign'
             mock_rerun.assert_called_once()
 
+    @patch('src.ui.views.dashboard_page.require_auth')
+    @patch('src.ui.views.dashboard_page.get_user_campaigns')
+    @patch('streamlit.button')
+    @patch('streamlit.rerun')
+    def test_quick_campaign_buttons(self, mock_rerun, mock_button, mock_get_campaigns, mock_require_auth):
+        from src.ui.views.dashboard_page import show_dashboard_page
+
+        mock_require_auth.return_value = True
+        mock_session_state = Mock()
+        mock_session_state.user = {'id': 1, 'email': 'test@example.com'}
+        # Deux campagnes pour lister des boutons
+        mock_get_campaigns.return_value = [
+            {'id': 1, 'name': 'Campaign 1', 'message_count': 5, 'language': 'FR', 'themes': ['Fantasy']},
+            {'id': 2, 'name': 'Campaign 2', 'message_count': 3, 'language': 'EN', 'themes': ['Sci-Fi']}
+        ]
+
+        # Simuler un clic sur le premier bouton quick_camp_0
+        def button_side_effect(text, **kwargs):
+            return text.startswith('🏰 Campaign 1')
+        mock_button.side_effect = button_side_effect
+
+        def create_mock_col():
+            c = Mock()
+            c.__enter__ = Mock(return_value=c)
+            c.__exit__ = Mock(return_value=None)
+            return c
+        def mock_columns_side_effect(n):
+            return [create_mock_col() for _ in range(3 if n == 3 else 2)]
+
+        with patch('streamlit.session_state', mock_session_state), \
+             patch('streamlit.title'), \
+             patch('streamlit.markdown'), \
+             patch('streamlit.columns', side_effect=mock_columns_side_effect), \
+             patch('streamlit.metric'), \
+             patch('streamlit.divider'):
+            show_dashboard_page()
+
+        # Doit avoir redirigé vers chatbot et effectué un rerun
+        assert mock_session_state.page == 'chatbot'
+        mock_rerun.assert_called()
+
 
 class TestSettingsPage:
     """Tests pour la page des paramètres."""

@@ -60,4 +60,19 @@ class TestUIAppNavigationLogout:
         assert mock_st.session_state.page == "auth"
         mock_st.rerun.assert_called()
 
+    @patch('src.ui.app.configure_page')
+    @patch('src.ui.app.apply_custom_css')
+    def test_main_unknown_page_route_error(self, _css, _cfg):
+        from src.ui.app import main
+        # Simuler une page inconnue pour déclencher la voie d'erreur
+        with patch('src.ui.app.st') as mock_st:
+            sess = SessionLike()
+            sess.page = 'unknown'
+            sess.app_initialized = True  # éviter initialize_app -> init_db
+            mock_st.session_state = sess
+            mock_st.rerun = Mock()
+            main()
+            mock_st.error.assert_called()
+            assert mock_st.session_state.page == 'auth'
+
 
