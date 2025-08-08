@@ -197,6 +197,34 @@ class TestChatbotPage:
 
     @patch('src.ui.views.chatbot_page.require_auth', return_value=True)
     @patch('src.ui.views.chatbot_page.launch_chat_interface')
+    @patch('src.ui.views.chatbot_page.st')
+    def test_chatbot_reset_and_nav_buttons(self, mock_st, _launch, _auth):
+        from src.ui.views.chatbot_page import show_chatbot_page
+
+        # Session avec user + campaign/character pour infos
+        class S(dict):
+            def __contains__(self,k): return dict.__contains__(self,k) or hasattr(self,k)
+        s = S(); s.user={"id":1}; s.campaign={"id":1,"name":"Camp","language":"fr","themes":[]}; s.character={"id":2,"name":"Hero"}
+        mock_st.session_state = s
+
+        # Mock UI
+        mock_st.columns.side_effect = lambda spec: [_mk_col() for _ in range(len(spec) if isinstance(spec, list) else spec)]
+        mock_st.sidebar.__enter__ = Mock(return_value=mock_st)
+        mock_st.sidebar.__exit__ = Mock(return_value=None)
+        mock_st.tabs.return_value = [_mk_col(), _mk_col(), _mk_col()]
+
+        # Simuler clics sur les boutons de gestion (reset history + nav)
+        def button_side(label, **kw):
+            return any(x in label for x in ["Nouvelle Aventure", "Changer Personnage", "Changer Campagne"]) or label.startswith("🏠 Dashboard")
+        mock_st.button.side_effect = button_side
+
+        with patch('src.analytics.performance.show_performance'):
+            show_chatbot_page()
+        # Après reset, un rerun est déclenché à plusieurs endroits; on vérifie au moins un appel
+        assert mock_st.rerun.called
+
+    @patch('src.ui.views.chatbot_page.require_auth', return_value=True)
+    @patch('src.ui.views.chatbot_page.launch_chat_interface')
     @patch('src.ui.views.chatbot_page.get_campaign_messages')
     @patch('src.ui.views.chatbot_page.get_user_campaigns')
     @patch('src.ui.views.chatbot_page.st')
