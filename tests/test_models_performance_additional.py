@@ -3,9 +3,9 @@ Compléments pour src.data.models PerformanceManager
 """
 
 import os
+import sqlite3
 import sys
 from unittest.mock import patch
-import sqlite3
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

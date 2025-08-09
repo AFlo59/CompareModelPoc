@@ -34,7 +34,9 @@ class TestPortraitGeneration:
 
         # Vérifier les paramètres de l'appel
         call_args = mock_client.images.generate.call_args
-        assert "dall-e-3" in str(call_args)
+        # Le code tente d'abord gpt-image-1, puis potentiellement dall-e-3 en fallback.
+        # On accepte gpt-image-1 ou dall-e-3 selon le chemin pris.
+        assert call_args.kwargs.get("model") in ("gpt-image-1", "dall-e-3")
         assert "Elric" in str(call_args)
 
     @patch("src.ai.portraits.get_openai_client")

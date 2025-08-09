@@ -2,11 +2,19 @@
 Page de création et gestion des personnages
 """
 
-import streamlit as st
-from src.auth.auth import require_auth
-from src.data.models import get_user_characters, create_character, get_user_campaigns, update_character_portrait
-from src.ai.portraits import generate_portrait
 from typing import List, Optional
+
+import streamlit as st
+
+from src.ai.portraits import generate_portrait
+from src.auth.auth import require_auth
+from src.data.models import (
+    PerformanceManager,
+    create_character,
+    get_user_campaigns,
+    get_user_characters,
+    update_character_portrait,
+)
 
 
 def show_character_page() -> None:
@@ -45,7 +53,7 @@ def show_character_page() -> None:
 
         for character in characters:
             with st.expander(
-                f"🧙‍♂️ {character.get('name', 'Personnage sans nom')} ({character.get('char_class', 'Classe inconnue')})"
+                f"🧙‍♂️ {character.get('name', 'Personnage sans nom')} ({character.get('class', 'Classe inconnue')})"
             ):
                 col1, col2, col3, col4 = st.columns(4)
 
@@ -57,7 +65,8 @@ def show_character_page() -> None:
 
                 with col2:
                     st.write(f"**Race :** {character.get('race', 'Non définie')}")
-                    st.write(f"**Classe :** {character.get('char_class', 'Non définie')}")
+                    st.write(f"**Classe :** {character.get('class', 'Non définie')}")
+                    st.write(f"**Niveau :** {character.get('level', 1)}")
 
                 with col3:
                     campaign_id = character.get("campaign_id")
@@ -197,10 +206,20 @@ def show_character_page() -> None:
                 ],
                 help="La classe de votre personnage",
             )
-
-            character_level = st.number_input(
-                "📊 Niveau", min_value=1, max_value=20, value=1, help="Le niveau de départ de votre personnage"
-            )
+            # Niveau fixé à 1 par défaut (non modifiable)
+            character_level = 1
+            try:
+                st.number_input(
+                    "📊 Niveau",
+                    min_value=1,
+                    max_value=20,
+                    value=1,
+                    help="Le niveau de départ de votre personnage",
+                    disabled=True,
+                )
+            except Exception:
+                # Sur certaines versions de Streamlit sans 'disabled', on affiche juste l'info
+                st.caption("📊 Niveau: 1 (par défaut)")
 
         # Description détaillée
         character_description = st.text_area(
@@ -215,8 +234,13 @@ def show_character_page() -> None:
             help="Plus de détails = meilleur portrait généré par l'IA",
         )
 
-        # Options avancées
+        # Genre et options avancées
         with st.expander("🎨 Options avancées de génération"):
+            gender = st.selectbox(
+                "⚧ Genre",
+                ["Homme", "Femme"],
+                help="Influence la génération du portrait",
+            )
             art_style = st.selectbox(
                 "🖼️ Style artistique du portrait",
                 ["Fantasy Réaliste", "Anime/Manga", "Art Conceptuel", "Peinture Classique", "Illustration Moderne"],
@@ -269,13 +293,18 @@ def show_character_page() -> None:
                             Race : {character_race}
                             Classe : {character_class}
                             Niveau : {character_level}
+                            Genre : {gender}
                             Contexte : {campaign_context}
                             Description : {character_description}
                             Style : {art_style}
                             Expression : {portrait_mood}
                             """
 
+                            import time
+
+                            start = time.time()
                             portrait_url = generate_portrait(name=character_name, description=portrait_prompt)
+                            latency = time.time() - start
 
                             if portrait_url:
                                 # Mettre à jour le personnage avec le portrait
@@ -291,13 +320,25 @@ def show_character_page() -> None:
                         except Exception as e:
                             st.warning(f"⚠️ Erreur lors de la génération du portrait : {e}")
                             st.info("💡 Le personnage est créé, vous pourrez générer le portrait plus tard.")
+                        finally:
+                            try:
+                                # Traquer la génération d'image personnage
+                                PerformanceManager.store_performance(
+                                    user_id=user_id,
+                                    model="DALL-E 3",
+                                    latency=latency if "latency" in locals() else 0.0,
+                                    tokens_in=0,
+                                    tokens_out=0,
+                                    campaign_id=selected_campaign_id,
+                                    cost_estimate=None,
+                                )
+                            except Exception:
+                                pass
 
                         # Redirection vers le chatbot + initialisation état
                         st.success("🎮 **Prêt à jouer !** Redirection vers le chat...")
                         # Charger la campagne complète dans le state
                         try:
-                            from src.data.models import get_user_campaigns
-
                             all_camps = get_user_campaigns(user_id)
                             st.session_state.campaign = next((c for c in all_camps if c["id"] == selected_campaign_id), None)
                         except Exception:
@@ -310,6 +351,7 @@ def show_character_page() -> None:
                             "class": character_class,
                             "race": character_race,
                             "level": character_level,
+                            "gender": gender,
                             "portrait_url": portrait_url if "portrait_url" in locals() else None,
                         }
                         try:
@@ -360,6 +402,15 @@ def show_character_page() -> None:
                                         },
                                         {"role": "user", "content": intro},
                                     ]
+                                except Exception:
+                                    pass
+
+                            # Indiquer au chatbot de générer automatiquement la réponse d'introduction
+                            try:
+                                st.session_state.auto_start_intro = True
+                            except Exception:
+                                try:
+                                    st.session_state["auto_start_intro"] = True
                                 except Exception:
                                     pass
 

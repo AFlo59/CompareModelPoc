@@ -3,11 +3,11 @@ Génération de portraits optimisée avec gestionnaire d'API centralisé
 """
 
 import logging
-from typing import Optional
-
 import os
-from src.ai.api_client import get_openai_client
+from typing import List, Optional
 from urllib.parse import quote_plus
+
+from src.ai.api_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 class PortraitGenerator:
     """Générateur de portraits avec gestion d'erreurs améliorée."""
 
-    # Paramètres par défaut pour DALL-E 3
-    DEFAULT_CONFIG = {"model": "dall-e-3", "size": "1024x1024", "quality": "standard", "n": 1}
+    # Paramètres par défaut images
+    DEFAULT_CONFIG = {"size": "1024x1024", "quality": "standard", "n": 1}
+    PRIMARY_IMAGE_MODEL = "gpt-image-1"  # tentative prioritaire
+    FALLBACK_IMAGE_MODEL = "dall-e-3"  # fallback si échec de la primaire
 
     @staticmethod
     def _build_prompt(name: str, description: Optional[str] = None, character_type: str = "personnage") -> str:
@@ -45,10 +47,42 @@ class PortraitGenerator:
         return cls._generate_portrait(name, description, "personnage de jeu de rôle")
 
     @classmethod
-    def generate_gm_portrait(cls, campaign_theme: str = "fantasy") -> Optional[str]:
-        """Génère un portrait de Maître du Jeu."""
+    def generate_gm_portrait(
+        cls,
+        campaign_theme: str = "fantasy",
+        campaign_name: Optional[str] = None,
+        secondary_themes: Optional[List[str]] = None,
+        tone: Optional[str] = None,
+        language: Optional[str] = None,
+        model_name: Optional[str] = None,
+        expression: Optional[str] = None,
+        art_style: Optional[str] = None,
+        campaign_description: Optional[str] = None,
+    ) -> Optional[str]:
+        """Génère un portrait de Maître du Jeu en tenant compte des métadonnées de la campagne.
+
+        Tous les paramètres sont optionnels pour préserver la rétrocompatibilité avec les tests existants.
+        """
         name = "Maître du Jeu"
-        description = f"sage et mystérieux dans un univers {campaign_theme}"
+        parts: List[str] = [f"sage et mystérieux dans un univers {campaign_theme}"]
+        if campaign_name:
+            parts.append(f"pour la campagne '{campaign_name}'")
+        if secondary_themes:
+            parts.append(f"thèmes secondaires: {', '.join(secondary_themes)}")
+        if tone:
+            parts.append(f"ton: {tone}")
+        if language:
+            parts.append(f"langue: {language}")
+        if model_name:
+            parts.append(f"modèle IA: {model_name}")
+        if expression:
+            parts.append(f"expression/humeur: {expression}")
+        if art_style:
+            parts.append(f"style artistique: {art_style}")
+        if campaign_description:
+            parts.append(f"contexte: {campaign_description}")
+
+        description = ", ".join(parts)
         return cls._generate_portrait(name, description, "maître du jeu")
 
     @classmethod
@@ -71,11 +105,19 @@ class PortraitGenerator:
             client = get_openai_client()
             if client is None:
                 return cls._fallback_or_none(name)
-            response = client.images.generate(prompt=prompt, **cls.DEFAULT_CONFIG)
-
-            image_url = response.data[0].url
-            logger.info(f"Portrait généré avec succès pour '{name}'")
-            return image_url
+            # 1) tentative via modèle gpt-image-1
+            try:
+                response = client.images.generate(prompt=prompt, model=cls.PRIMARY_IMAGE_MODEL, **cls.DEFAULT_CONFIG)
+                image_url = response.data[0].url
+                logger.info("Portrait généré via gpt-image-1")
+                return image_url
+            except Exception as primary_err:
+                logger.warning(f"Échec gpt-image-1: {primary_err}")
+                # 2) fallback DALL·E 3
+                response = client.images.generate(prompt=prompt, model=cls.FALLBACK_IMAGE_MODEL, **cls.DEFAULT_CONFIG)
+                image_url = response.data[0].url
+                logger.info("Portrait généré via dall-e-3")
+                return image_url
 
         except ValueError as e:
             # Erreur de configuration (clé API manquante)
@@ -85,6 +127,17 @@ class PortraitGenerator:
         except Exception as e:
             # Autres erreurs (API, réseau, etc.)
             logger.error(f"Erreur lors de la génération du portrait pour '{name}': {e}")
+            # Fallback AUTOMATIQUE pour erreurs de quota/limite/billing
+            message = str(e).lower()
+            quota_signals = (
+                "insufficient_quota",
+                "too many requests",
+                "429",
+                "billing_hard_limit_reached",
+                "billing",
+            )
+            if any(sig in message for sig in quota_signals):
+                return cls._placeholder_portrait_url(name)
             return cls._fallback_or_none(name)
 
     @staticmethod

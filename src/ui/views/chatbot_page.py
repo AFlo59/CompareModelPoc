@@ -3,9 +3,10 @@ Page du chatbot principal
 """
 
 import streamlit as st
-from src.auth.auth import require_auth, logout
+
 from src.ai.chatbot import launch_chat_interface
-from src.data.models import get_user_campaigns, get_campaign_messages
+from src.auth.auth import logout, require_auth
+from src.data.models import get_campaign_messages, get_user_campaigns, get_user_characters
 
 
 def show_chatbot_page() -> None:
@@ -13,14 +14,41 @@ def show_chatbot_page() -> None:
     if not require_auth():
         return
 
+    # Déterminer la campagne et le personnage actifs (robuste: attribut ou clé dict)
+    campaign = getattr(st.session_state, "campaign", None)
+    if campaign is None:
+        try:
+            campaign = st.session_state.get("campaign")
+        except Exception:
+            campaign = None
+    character = getattr(st.session_state, "character", None)
+    if character is None:
+        try:
+            character = st.session_state.get("character")
+        except Exception:
+            character = None
+
+    # Si aucun personnage n'est en session mais qu'une campagne est active,
+    # tenter de sélectionner automatiquement le dernier personnage lié à cette campagne
+    if campaign and not character:
+        try:
+            user_id = st.session_state.user["id"]
+            all_characters = get_user_characters(user_id)
+            linked = [c for c in all_characters if c.get("campaign_id") == campaign.get("id")]
+            if linked:
+                st.session_state.character = linked[0]
+                character = linked[0]
+        except Exception:
+            pass
+
     # === HEADER DE LA PAGE AVEC INFOS CAMPAGNE/JOUEUR ===
     # Structure en 3 colonnes : Campagne | Espace | Personnage
     header_col1, header_col2, header_col3 = st.columns([2, 1, 2])
 
     # COLONNE GAUCHE : INFORMATIONS CAMPAGNE + PORTRAIT MJ
     with header_col1:
-        if "campaign" in st.session_state and st.session_state.campaign:
-            camp = st.session_state.campaign
+        if campaign:
+            camp = campaign
 
             # Card campagne avec style
             st.markdown(
@@ -56,8 +84,8 @@ def show_chatbot_page() -> None:
 
     # COLONNE DROITE : INFORMATIONS PERSONNAGE + PORTRAIT
     with header_col3:
-        if "character" in st.session_state and st.session_state.character:
-            char = st.session_state.character
+        if character:
+            char = character
 
             # Card personnage avec style
             st.markdown(
@@ -140,15 +168,6 @@ def show_chatbot_page() -> None:
             st.error(f"Erreur campagnes: {e}")
 
         st.divider()
-
-        # Navigation vers autres pages
-        if st.button("🏠 Dashboard", use_container_width=True):
-            st.session_state.page = "dashboard"
-            st.rerun()
-
-        if st.button("🧙‍♂️ Mes Personnages", use_container_width=True):
-            st.session_state.page = "character"
-            st.rerun()
 
     # === INTERFACE PRINCIPALE DU CHATBOT ===
     st.markdown("### 🎲 Interface de Jeu")

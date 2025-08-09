@@ -113,7 +113,8 @@ def clean_db(test_db):
 def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
     import bcrypt
-    from src.data.database import get_optimized_connection, DatabaseConnection
+
+    from src.data.database import DatabaseConnection, get_optimized_connection
 
     # S'assurer que la DB est bien initialisée avec le bon schéma
     try:

@@ -7,12 +7,12 @@ Automatise le déploiement local, Docker et production.
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
-from pathlib import Path
-import shutil
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 # S'assurer qu'on travaille depuis la racine du projet
 script_dir = Path(__file__).parent
@@ -57,7 +57,16 @@ def run_command(cmd: str, cwd: str = None, check: bool = True) -> subprocess.Com
     """Exécute une commande shell."""
     print(f"{Colors.OKCYAN}▶️  {cmd}{Colors.ENDC}")
     try:
-        result = subprocess.run(cmd, shell=True, cwd=cwd, check=check, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            cwd=cwd,
+            check=check,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
         if result.stdout:
             print(result.stdout)
         return result

@@ -3,32 +3,33 @@ Tests pour le module analytics - performance et monitoring
 """
 
 import os
-import sys
-import pytest
-import pandas as pd
 import sqlite3
-from unittest.mock import Mock, patch, MagicMock
+import sys
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
+
+import pandas as pd
+import pytest
 
 # Ajouter le répertoire parent au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.analytics.performance import (
-    get_performance_data,
-    calculate_cost,
-    show_performance_summary,
-    show_model_comparison,
-    show_performance_charts,
-    show_performance,
-    show_ai_performance,
     MODEL_COSTS,
+    calculate_cost,
+    get_performance_data,
+    show_ai_performance,
+    show_model_comparison,
+    show_performance,
+    show_performance_charts,
+    show_performance_summary,
 )
 from src.analytics.system_monitoring import (
-    get_system_info,
     get_cpu_stats,
-    get_memory_stats,
     get_disk_stats,
+    get_memory_stats,
     get_network_stats,
+    get_system_info,
     show_system_monitoring,
 )
 

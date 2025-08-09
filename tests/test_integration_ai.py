@@ -4,7 +4,7 @@ Tests d'intégration pour les APIs IA
 
 import os
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -13,11 +13,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.ai.chatbot import (
     APIManager,
-    call_ai_model_optimized,
     ChatbotError,
+    call_ai_model_optimized,
+    launch_chat_interface_optimized,
     store_message_optimized,
     store_performance_optimized,
-    launch_chat_interface_optimized,
 )
 from src.ai.portraits import PortraitGenerator
 
@@ -358,12 +358,12 @@ class TestPortraitGeneratorIntegration:
 
         assert result == "https://example.com/portrait.jpg"
 
-        # Vérifier l'appel à DALL-E
-        mock_client.images.generate.assert_called_once()
+        # Vérifier l'appel au générateur d'images (gpt-image-1 prioritaire, fallback dall-e-3)
+        mock_client.images.generate.assert_called()
         call_args = mock_client.images.generate.call_args
         assert "Aragorn" in call_args.kwargs["prompt"]
         assert "grand et noble" in call_args.kwargs["prompt"]
-        assert call_args.kwargs["model"] == "dall-e-3"
+        assert call_args.kwargs["model"] in ("gpt-image-1", "dall-e-3")
         assert call_args.kwargs["size"] == "1024x1024"
 
     @patch("src.ai.portraits.get_openai_client")

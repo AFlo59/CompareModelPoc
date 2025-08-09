@@ -48,6 +48,7 @@ class TestCoreConfig:
     @patch.dict(os.environ, {"OPENAI_API_KEY": "x", "ANTHROPIC_API_KEY": "y", "DEEPSEEK_API_KEY": "z"}, clear=True)
     def test_get_available_models_respects_keys(self):
         import importlib
+
         import src.core.config as cfg
 
         cfg = importlib.reload(cfg)

@@ -38,7 +38,7 @@ class TestAuthMissingBranches:
             assert SessionManager.get_session_info() == {}
 
     def test_require_special_in_password(self):
-        from src.auth.auth import validate_password_enhanced, SecurityConfig
+        from src.auth.auth import SecurityConfig, validate_password_enhanced
 
         # Forcer la règle speciale
         old = SecurityConfig.REQUIRE_SPECIAL

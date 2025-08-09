@@ -2,12 +2,11 @@
 Couvre la branche d'import .env manquant (ligne 17) dans src.core.config
 """
 
+import importlib
 import os
 import sys
 from io import StringIO
 from unittest.mock import patch
-
-import importlib
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

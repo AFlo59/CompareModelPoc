@@ -19,8 +19,8 @@ class TestChatbotAdditional:
     @patch("src.ai.chatbot.get_anthropic_client")
     def test_call_anthropic_model_exception(self, mock_client):
         """Couvre l'exception dans call_anthropic_model (lignes 89-91)."""
+        from src.ai.chatbot import ChatbotError, call_ai_model
         from src.ai.models_config import get_model_config
-        from src.ai.chatbot import call_ai_model, ChatbotError
 
         # Forcer le client Anthropic à lever une exception
         mock_client.return_value = Mock()
@@ -58,8 +58,9 @@ class TestChatbotAdditional:
     @patch("src.ai.chatbot.st.error")
     def test_launch_chat_interface_no_campaign(self, mock_error, mock_button, mock_rerun):
         """Couvre le early return quand aucune campagne (lignes 173-179)."""
-        from src.ai.chatbot import launch_chat_interface
         import streamlit as st
+
+        from src.ai.chatbot import launch_chat_interface
 
         # Préparer un session_state vide
         st.session_state.clear()
@@ -75,8 +76,9 @@ class TestChatbotAdditional:
     @patch("src.ai.chatbot.st.error")
     def test_launch_chat_interface_no_campaign_navigate(self, mock_error, mock_button, mock_rerun):
         """Couvre le bouton de navigation quand aucune campagne (lignes 175-177)."""
-        from src.ai.chatbot import launch_chat_interface
         import streamlit as st
+
+        from src.ai.chatbot import launch_chat_interface
 
         st.session_state.clear()
         mock_button.return_value = True
@@ -93,7 +95,7 @@ class TestChatbotAdditional:
         ) as sp, patch("src.ai.chatbot.launch_chat_interface_optimized") as lci, patch(
             "src.ai.chatbot.call_ai_model_optimized"
         ) as cam:
-            from src.ai.chatbot import store_message, store_performance, launch_chat_interface, call_ai_model
+            from src.ai.chatbot import call_ai_model, launch_chat_interface, store_message, store_performance
 
             store_message(1, "user", "hello", 1)
             sm.assert_called_once()

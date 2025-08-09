@@ -13,6 +13,7 @@ class TestCoreConfigAdditional:
     @patch.dict(os.environ, {"OPENAI_API_KEY": "x", "ANTHROPIC_API_KEY": "y", "DEEPSEEK_API_KEY": "z"}, clear=True)
     def test_get_available_models_all(self):
         import importlib
+
         import src.core.config as cfg
 
         cfg = importlib.reload(cfg)
@@ -24,6 +25,7 @@ class TestCoreConfigAdditional:
     @patch.dict(os.environ, {}, clear=True)
     def test_get_model_config_and_lists(self):
         import importlib
+
         import src.core.config as cfg
 
         cfg = importlib.reload(cfg)

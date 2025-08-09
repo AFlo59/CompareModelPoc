@@ -109,11 +109,11 @@ class TestImportability:
     def test_import_core_modules(self):
         """Test d'import des modules core."""
         try:
-            from src.core import config
-            from src.data import database, models
-            from src.auth import auth
             from src.ai import chatbot, portraits
             from src.analytics import performance
+            from src.auth import auth
+            from src.core import config
+            from src.data import database, models
 
             assert True  # Si on arrive ici, tous les imports ont réussi
         except ImportError as e:
@@ -135,7 +135,7 @@ class TestImportability:
         try:
             from src.ui import app
             from src.ui.components import styles
-            from src.ui.views import auth_page, dashboard_page, chatbot_page
+            from src.ui.views import auth_page, chatbot_page, dashboard_page
 
             assert True
         except ImportError as e:

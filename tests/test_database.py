@@ -3,11 +3,11 @@ Tests pour le module de base de données optimisé
 """
 
 import os
+import sqlite3
 import sys
 import tempfile
-import sqlite3
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 

@@ -1,8 +1,8 @@
 import os
 import sys
-from unittest.mock import MagicMock, patch, Mock
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
 
 import bcrypt
 import pytest
@@ -12,17 +12,17 @@ import streamlit as st
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.auth.auth import (
-    validate_email,
-    validate_password,
-    SecurityConfig,
     LoginAttemptTracker,
+    SecurityConfig,
     SessionManager,
-    validate_email_enhanced,
-    validate_password_enhanced,
-    register_user_enhanced,
     login_enhanced,
-    require_auth_enhanced,
     logout_enhanced,
+    register_user_enhanced,
+    require_auth_enhanced,
+    validate_email,
+    validate_email_enhanced,
+    validate_password,
+    validate_password_enhanced,
 )
 from src.data.database import get_connection
 

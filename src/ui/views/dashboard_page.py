@@ -3,8 +3,9 @@ Page du tableau de bord principal
 """
 
 import streamlit as st
-from src.auth.auth import require_auth, logout
-from src.data.models import get_user_campaigns, get_campaign_messages
+
+from src.auth.auth import logout, require_auth
+from src.data.models import get_campaign_messages, get_user_campaigns
 
 
 def show_dashboard_page() -> None:

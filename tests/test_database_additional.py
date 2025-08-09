@@ -3,11 +3,10 @@ Tests additionnels pour src.data.database: get_db_path et migrations v4
 """
 
 import os
+import sqlite3
 import sys
 from pathlib import Path
 from unittest.mock import patch
-
-import sqlite3
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
