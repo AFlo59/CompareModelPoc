@@ -19,7 +19,7 @@ try:
         load_dotenv()
         print("✅ Fichier .env chargé")
     else:
-        print("ℹ️  Mode Docker : utilisation des variables d'environnement")
+        print("ℹ️  Aucun .env local – variables d'environnement uniquement")
 except Exception:
     print("ℹ️  python-dotenv non disponible, variables .env ignorées")
 

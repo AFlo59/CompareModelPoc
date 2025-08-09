@@ -76,6 +76,22 @@ def run_command(cmd: str, cwd: str = None, check: bool = True) -> subprocess.Com
         return e
 
 
+def get_compose_command() -> str:
+    """Retourne la commande docker compose disponible (plugin ou binaire legacy)."""
+    # Préfère le plugin `docker compose` si disponible
+    try:
+        result = subprocess.run(
+            "docker compose version", shell=True, check=False, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            return "docker compose"
+    except Exception:
+        pass
+
+    # Fallback vers l'ancien binaire docker-compose
+    return "docker-compose"
+
+
 def check_prerequisites():
     """Vérifie les prérequis pour le déploiement."""
     print_header("Vérification des prérequis")
@@ -190,51 +206,18 @@ def run_tests_before_deploy():
     return True
 
 
-def create_deployment_env(environment: str):
-    """Crée les fichiers d'environnement pour le déploiement."""
-    print_header(f"Configuration de l'environnement {environment}")
-    
-    env_configs = {
-        "development": {
-            "DEBUG": "true",
-            "LOG_LEVEL": "DEBUG",
-            "STREAMLIT_SERVER_PORT": "8501",
-            "STREAMLIT_SERVER_ADDRESS": "0.0.0.0"
-        },
-        "staging": {
-            "DEBUG": "false",
-            "LOG_LEVEL": "INFO",
-            "STREAMLIT_SERVER_PORT": "8501",
-            "STREAMLIT_SERVER_ADDRESS": "0.0.0.0"
-        },
-        "production": {
-            "DEBUG": "false",
-            "LOG_LEVEL": "WARNING",
-            "STREAMLIT_SERVER_PORT": "8501",
-            "STREAMLIT_SERVER_ADDRESS": "0.0.0.0",
-            "STREAMLIT_SERVER_MAX_UPLOAD_SIZE": "50",
-            "STREAMLIT_SERVER_ENABLE_CORS": "false"
-        }
-    }
-    
-    config = env_configs.get(environment, env_configs["development"])
-    
-    # Créer le fichier .env pour l'environnement
-    env_file = f".env.{environment}"
-    with open(env_file, "w") as f:
-        f.write(f"# Configuration {environment.upper()}\n")
-        f.write(f"# Générée le {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        
-        for key, value in config.items():
-            f.write(f"{key}={value}\n")
-        
-        f.write("\n# Clés API (à remplir)\n")
-        f.write("OPENAI_API_KEY=\n")
-        f.write("ANTHROPIC_API_KEY=\n")
-        f.write("DEEPSEEK_API_KEY=\n")
-    
-    print_success(f"Configuration {environment} créée: {env_file}")
-    return env_file
+def resolve_env_file(environment: str) -> str | None:
+    """Détermine quel fichier d'environnement utiliser.
+
+    Priorité: .env à la racine si présent. Sinon, aucun --env-file n'est passé
+    (docker compose utilisera les variables d'environnement du shell).
+    """
+    root_env = Path(".env")
+    if root_env.exists():
+        print_success("Fichier .env détecté – utilisé pour le déploiement")
+        return str(root_env)
+    print_warning("Aucun fichier .env trouvé – les variables doivent provenir de l'environnement système")
+    return None
 
 
 def deploy_local(use_optimized: bool = False):
@@ -247,9 +230,6 @@ def deploy_local(use_optimized: bool = False):
     # Installer/mettre à jour les dépendances
     print("📦 Installation des dépendances...")
     run_command("pip install -r requirements/requirements.txt")
-    
-    # Créer la configuration de développement
-    create_deployment_env("development")
     
     # Lancer l'application
     app_file = "src/ui/app.py"  # Version modulaire (ex-refactored)
@@ -286,34 +266,51 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
         print_error("docker-compose.yml manquant dans docker/")
         return False
     
-    # Créer la configuration d'environnement
-    env_file = create_deployment_env(environment)
-    
-    # Build de l'image
-    image_name = f"dnd-ai-gamemaster:{environment}"
-    print(f"🐳 Construction de l'image Docker: {image_name}")
-    
-    docker_build_cmd = f"docker build -f docker/Dockerfile -t {image_name} ."
-    run_command(docker_build_cmd)
-    
-    if build_only:
-        print_success(f"Image Docker {image_name} construite avec succès !")
-        return True
-    
-    # Lancement avec Docker Compose
-    print("🚀 Lancement de l'application avec Docker Compose...")
+    # Résoudre le fichier d'environnement
+    env_file = resolve_env_file(environment)
+
+    # Toujours arrêter proprement les éventuels conteneurs existants avant rebuild
     compose_file = "docker/docker-compose.yml"
     project_name = f"comparemodelpoc_{environment}"
-    # Up avec rebuild et suppression des orphelins pour éviter les conflits au redeploy
-    compose_cmd = (
-        f"docker-compose -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"
+    compose_cmd_base = get_compose_command()
+    print("🧹 Arrêt des conteneurs existants (compose down)...")
+    down_cmd = (
+        f"{compose_cmd_base} -p {project_name} -f {compose_file} down --remove-orphans"
     )
-    run_command(compose_cmd)
+    if env_file:
+        down_cmd = (
+            f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} down --remove-orphans"
+        )
+    run_command(down_cmd, check=False)
+
+    # Construction via docker compose pour utiliser le docker-compose.yml existant
+    compose_cmd_base = get_compose_command()
+    print("🐳 Construction des services (compose build)...")
+    build_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} build"
+    if env_file:
+        build_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} build"
+    run_command(build_cmd)
+
+    if build_only:
+        print_success("Build compose terminé avec succès !")
+        return True
+
+    # Lancement avec Docker Compose
+    print("🚀 Lancement de l'application avec Docker Compose...")
+    # Up avec rebuild et suppression des orphelins pour éviter les conflits au redeploy
+    up_cmd = (
+        f"{compose_cmd_base} -p {project_name} -f {compose_file} up -d --build --remove-orphans"
+    )
+    if env_file:
+        up_cmd = (
+            f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"
+        )
+    run_command(up_cmd)
     
     print_success("Application déployée avec Docker !")
     print(f"{Colors.OKBLUE}🌐 Accessible sur: http://localhost:8501{Colors.ENDC}")
-    print(f"{Colors.OKCYAN}📋 Logs: docker-compose -f docker/docker-compose.yml logs -f{Colors.ENDC}")
-    print(f"{Colors.OKCYAN}🛑 Arrêt: docker-compose -p {project_name} -f docker/docker-compose.yml down --remove-orphans{Colors.ENDC}")
+    print(f"{Colors.OKCYAN}📋 Logs: {compose_cmd_base} -f docker/docker-compose.yml logs -f{Colors.ENDC}")
+    print(f"{Colors.OKCYAN}🛑 Arrêt: {compose_cmd_base} -p {project_name} -f docker/docker-compose.yml down --remove-orphans{Colors.ENDC}")
     
     return True
 
@@ -537,7 +534,8 @@ def stop_deployment(environment: str = "development"):
     project_name = f"comparemodelpoc_{environment}"
     if Path(compose_file).exists():
         print("🐳 Arrêt de Docker Compose...")
-        run_command(f"docker-compose -p {project_name} -f {compose_file} down --remove-orphans", check=False)
+        compose_cmd_base = get_compose_command()
+        run_command(f"{compose_cmd_base} -p {project_name} -f {compose_file} down --remove-orphans", check=False)
     
     # Arrêter les processus Streamlit
     try:

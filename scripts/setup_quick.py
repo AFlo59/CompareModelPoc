@@ -37,16 +37,11 @@ def main():
         requirements_file = "requirements/requirements.txt" if os.path.exists("requirements/requirements.txt") else "requirements.txt"
         subprocess.run([pip_path, "install", "-r", requirements_file], check=True)
         
-        # Créer .env si manquant
-        if not Path(".env").exists():
-            env_content = """# 🔑 Ajoutez vos clés API ici
-OPENAI_API_KEY=sk-your-openai-key-here
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
-DEEPSEEK_API_KEY=sk-your-deepseek-key-here
-"""
-            with open(".env", "w") as f:
-                f.write(env_content)
-            print("✅ Fichier .env créé")
+        # Ne pas forcer la création de .env – respecter l'existant
+        if Path(".env").exists():
+            print("✅ .env détecté – inchangé")
+        else:
+            print("ℹ️ Aucun .env présent – vous pourrez en ajouter un plus tard si besoin")
         
         print("\n🎉 Configuration terminée !")
         print("\n📋 Prochaines étapes :")

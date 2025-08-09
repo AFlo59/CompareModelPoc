@@ -371,6 +371,8 @@ def show_system_monitoring() -> None:
         col1, col2 = st.columns(2)
         
         with col1:
+            # Importer platform ici pour éviter UnboundLocalError lorsque l'import dans le bloc try a échoué
+            import platform  # noqa: F401
             st.markdown("**🖥️ Système**")
             st.write(f"• **OS:** {platform.system()}")
             st.write(f"• **Version:** {platform.release()}")

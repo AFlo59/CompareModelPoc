@@ -40,6 +40,9 @@ def show_chatbot_page() -> None:
             # Portrait du MJ si disponible
             if camp.get("gm_portrait"):
                 st.image(camp["gm_portrait"], width=150, caption="🧙‍♂️ Maître du Jeu")
+            else:
+                # Afficher un avatar de secours si pas de portrait
+                st.image("https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128", width=120)
         else:
             st.warning("⚠️ Aucune campagne sélectionnée")
     
@@ -71,6 +74,8 @@ def show_chatbot_page() -> None:
             # Portrait du personnage si disponible
             if char.get("portrait_url"):
                 st.image(char["portrait_url"], width=150, caption=f"🧙‍♂️ {char['name']}")
+            else:
+                st.image(f"https://api.dicebear.com/7.x/adventurer/png?seed={char['name']}&size=128", width=120)
         else:
             st.warning("⚠️ Aucun personnage sélectionné")
 

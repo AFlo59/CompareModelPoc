@@ -5,7 +5,9 @@ Génération de portraits optimisée avec gestionnaire d'API centralisé
 import logging
 from typing import Optional
 
+import os
 from src.ai.api_client import get_openai_client
+from urllib.parse import quote_plus
 
 logger = logging.getLogger(__name__)
 
@@ -55,16 +57,10 @@ class PortraitGenerator:
     
     @classmethod
     def _generate_portrait(cls, name: str, description: Optional[str] = None, character_type: str = "personnage") -> Optional[str]:
-        """
-        Génère un portrait avec gestion d'erreurs robuste.
-        
-        Args:
-            name: Nom du personnage
-            description: Description physique optionnelle
-            character_type: Type de personnage (pour le prompt)
-        
-        Returns:
-            URL de l'image générée ou None en cas d'erreur
+        """Génère un portrait avec gestion d'erreurs robuste.
+
+        - Utilise DALL·E 3 si disponible
+        - Fallback optionnel vers un avatar Dicebear (PNG) si l'API OpenAI n'est pas configurée ou échoue
         """
         if not name or not name.strip():
             logger.warning("Nom manquant pour la génération du portrait")
@@ -75,6 +71,8 @@ class PortraitGenerator:
             logger.info(f"Génération portrait pour '{name}' avec prompt: {prompt[:100]}...")
             
             client = get_openai_client()
+            if client is None:
+                return cls._fallback_or_none(name)
             response = client.images.generate(
                 prompt=prompt,
                 **cls.DEFAULT_CONFIG
@@ -87,11 +85,29 @@ class PortraitGenerator:
         except ValueError as e:
             # Erreur de configuration (clé API manquante)
             logger.error(f"Erreur de configuration pour '{name}': {e}")
+            # Respect des tests: en cas de ValueError explicite, retourner None
             return None
         except Exception as e:
             # Autres erreurs (API, réseau, etc.)
             logger.error(f"Erreur lors de la génération du portrait pour '{name}': {e}")
-            return None
+            return cls._fallback_or_none(name)
+
+    @staticmethod
+    def _placeholder_portrait_url(name: str) -> str:
+        """Retourne une URL d'avatar de secours (Dicebear PNG) basée sur le nom."""
+        seed = quote_plus(name.strip())
+        return f"https://api.dicebear.com/7.x/adventurer/png?seed={seed}&size=256"
+
+    @staticmethod
+    def _fallback_or_none(name: str) -> Optional[str]:
+        """Retourne une URL d'avatar seulement si le fallback est activé via env.
+
+        Activez avec PORTRAIT_FALLBACK=true (ou 1/on/yes).
+        """
+        flag = os.getenv("PORTRAIT_FALLBACK", "").lower()
+        if flag in ("1", "true", "on", "yes"):  # fallback activé explicitement
+            return PortraitGenerator._placeholder_portrait_url(name)
+        return None
 
 # Fonctions d'accès simplifiées (rétrocompatibilité)
 def generate_portrait(name: str, description: Optional[str] = None) -> Optional[str]:
