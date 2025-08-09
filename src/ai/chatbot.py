@@ -294,6 +294,13 @@ def launch_chat_interface_optimized(user_id: int) -> None:
         st.session_state.history.append({"role": "assistant", "content": reply})
         store_message_optimized(user_id, "assistant", reply, campaign_id)
 
+        # Forcer un rerun pour ré-afficher l'historique AU-DESSUS du champ d'entrée
+        # (sinon, la première réponse peut apparaître sous la zone input lors du déclenchement auto)
+        try:
+            st.rerun()
+        except Exception:
+            pass
+
 
 # ========================================
 # ALIASES POUR RÉTROCOMPATIBILITÉ TESTS

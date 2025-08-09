@@ -152,6 +152,8 @@ def show_campaign_page() -> None:
                             language=language,
                             ai_model=ai_model,  # Nouveau paramètre
                         )
+                        if not campaign_id:
+                            raise ValueError("Création de campagne échouée (ID manquant)")
 
                         st.success(f"✅ Campagne '{campaign_name}' créée avec succès !")
 
@@ -164,7 +166,9 @@ def show_campaign_page() -> None:
                             import time
 
                             start = time.time()
-                            gm_portrait_url = generate_gm_portrait(
+                            from src.ai.portraits import generate_gm_portrait_with_meta
+
+                            gm_portrait_url, used_model = generate_gm_portrait_with_meta(
                                 campaign_theme=main_theme,
                                 campaign_name=campaign_name.strip() or None,
                                 secondary_themes=secondary_themes or None,
@@ -193,10 +197,10 @@ def show_campaign_page() -> None:
                             st.warning(f"⚠️ Erreur lors de la génération du portrait du MJ : {e}")
                         finally:
                             try:
-                                # Traquer la génération d'image dans les performances (0 tokens, modèle DALL-E 3)
+                                # Traquer la génération d'image dans les performances (0 tokens)
                                 PerformanceManager.store_performance(
                                     user_id=user_id,
-                                    model="DALL-E 3",
+                                    model=used_model or "image-gen",
                                     latency=latency if "latency" in locals() else 0.0,
                                     tokens_in=0,
                                     tokens_out=0,

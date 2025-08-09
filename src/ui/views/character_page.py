@@ -235,12 +235,14 @@ def show_character_page() -> None:
         )
 
         # Genre et options avancées
+        # Genre: fait partie du profil personnage (pas une option d'image)
+        gender = st.selectbox(
+            "⚧ Genre",
+            ["Homme", "Femme"],
+            help="Genre du personnage",
+        )
+
         with st.expander("🎨 Options avancées de génération"):
-            gender = st.selectbox(
-                "⚧ Genre",
-                ["Homme", "Femme"],
-                help="Influence la génération du portrait",
-            )
             art_style = st.selectbox(
                 "🖼️ Style artistique du portrait",
                 ["Fantasy Réaliste", "Anime/Manga", "Art Conceptuel", "Peinture Classique", "Illustration Moderne"],
@@ -303,7 +305,11 @@ def show_character_page() -> None:
                             import time
 
                             start = time.time()
-                            portrait_url = generate_portrait(name=character_name, description=portrait_prompt)
+                            from src.ai.portraits import generate_portrait_with_meta
+
+                            portrait_url, used_model = generate_portrait_with_meta(
+                                name=character_name, description=portrait_prompt
+                            )
                             latency = time.time() - start
 
                             if portrait_url:
@@ -325,7 +331,7 @@ def show_character_page() -> None:
                                 # Traquer la génération d'image personnage
                                 PerformanceManager.store_performance(
                                     user_id=user_id,
-                                    model="DALL-E 3",
+                                    model=used_model or "image-gen",
                                     latency=latency if "latency" in locals() else 0.0,
                                     tokens_in=0,
                                     tokens_out=0,
@@ -414,12 +420,12 @@ def show_character_page() -> None:
                                 except Exception:
                                     pass
 
-                        # Petite pause puis redirection
-                        import time
-
-                        time.sleep(1)
-                        st.session_state.page = "chatbot"
-                        st.rerun()
+                        # Redirection immédiate: éviter les états transitoires d'affichage
+                        try:
+                            st.session_state.page = "chatbot"
+                            st.rerun()
+                        except Exception:
+                            pass
 
                 except Exception as e:
                     st.error(f"❌ Erreur lors de la création : {e}")
