@@ -27,6 +27,7 @@ class TestCoreConfig:
         # Dans certains environnements, un fichier .env peut être chargé.
         # On patch directement les attributs de Config pour contrôler le test.
         import src.core.config as cfg
+
         cfg.Config.OPENAI_API_KEY = None
         cfg.Config.ANTHROPIC_API_KEY = None
         cfg.Config.DEEPSEEK_API_KEY = None
@@ -36,6 +37,7 @@ class TestCoreConfig:
     @patch.dict(os.environ, {"OPENAI_API_KEY": "x", "ANTHROPIC_API_KEY": "y"}, clear=True)
     def test_validate_api_keys_partial(self):
         import src.core.config as cfg
+
         # Forcer explicitement les attributs de classe pour ignorer des .env chargés
         cfg.Config.OPENAI_API_KEY = "x"
         cfg.Config.ANTHROPIC_API_KEY = "y"
@@ -47,9 +49,8 @@ class TestCoreConfig:
     def test_get_available_models_respects_keys(self):
         import importlib
         import src.core.config as cfg
+
         cfg = importlib.reload(cfg)
         names = cfg.Config.get_available_models()
         # Avec toutes les clés, tous les modèles doivent être disponibles
         assert set(names) == set(cfg.Config.SUPPORTED_MODELS.keys())
-
-

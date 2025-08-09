@@ -23,6 +23,7 @@ class TestPerformanceAdditional:
     @patch("src.analytics.performance.st.subheader")
     def test_show_model_comparison_early_return(self, mock_sub):
         from src.analytics.performance import show_model_comparison
+
         df = pd.DataFrame()
         show_model_comparison(df)
         mock_sub.assert_not_called()
@@ -30,8 +31,7 @@ class TestPerformanceAdditional:
     @patch("src.analytics.performance.st.subheader")
     def test_show_performance_charts_early_return(self, mock_sub):
         from src.analytics.performance import show_performance_charts
+
         df = pd.DataFrame()
         show_performance_charts(df)
         mock_sub.assert_not_called()
-
-

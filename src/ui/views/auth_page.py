@@ -6,6 +6,7 @@ import streamlit as st
 from src.auth.auth import get_current_user, login, logout, register_user, require_auth
 from src.data.models import get_user_campaigns
 
+
 def determine_user_next_page(user_id: int) -> str:
     """Détermine la prochaine page à afficher selon l'état de l'utilisateur."""
     try:
@@ -17,6 +18,7 @@ def determine_user_next_page(user_id: int) -> str:
         # En cas d'erreur, rediriger vers dashboard (sécurisé)
         return "dashboard"
 
+
 def show_auth_page() -> None:
     """Affiche la page d'authentification."""
     # Vérifier si l'utilisateur est déjà connecté
@@ -26,7 +28,7 @@ def show_auth_page() -> None:
         st.session_state.page = next_page
         st.rerun()
         return
-    
+
     st.markdown(
         '<div class="main-header"><h1>🎲 DnD AI GameMaster</h1><p>Votre assistant IA pour des aventures épiques</p></div>',
         unsafe_allow_html=True,
@@ -48,6 +50,7 @@ def show_auth_page() -> None:
                 st.session_state.page = next_page
                 # Délai court pour laisser le temps de voir le message
                 import time
+
                 time.sleep(1)
                 st.rerun()
         else:

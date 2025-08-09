@@ -30,12 +30,12 @@ def check_required_files() -> Tuple[bool, List[str]]:
     """Vérifie la présence des fichiers requis."""
     required_files = [
         "run_app.py",
-        "src/ui/app.py", 
+        "src/ui/app.py",
         "src/data/database.py",
         "src/auth/auth.py",
         "src/data/models.py",
         "src/ai/chatbot.py",
-        "src/ai/portraits.py", 
+        "src/ai/portraits.py",
         "src/analytics/performance.py",
         "requirements/requirements.txt",
         "src/core/config.py",
@@ -83,9 +83,10 @@ def check_database() -> bool:
     try:
         # Ajouter le répertoire racine au PYTHONPATH
         import sys
+
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
-        
+
         from src.data.database import get_connection, init_db
 
         print("🗃️  Initialisation de la base de données...")
@@ -118,9 +119,10 @@ def run_tests() -> bool:
         # Définir les variables d'environnement pour les tests
         env = os.environ.copy()
         env["PYTHONPATH"] = str(project_root)
-        
-        result = subprocess.run([sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"], 
-                              capture_output=True, text=True, env=env)
+
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"], capture_output=True, text=True, env=env
+        )
 
         if result.returncode == 0:
             print("✅ Tous les tests passent")

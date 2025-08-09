@@ -22,14 +22,15 @@ os.chdir(project_root)
 
 class Colors:
     """Couleurs pour les messages console."""
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
 
 
 def print_header(text: str):
@@ -56,14 +57,7 @@ def run_command(cmd: str, cwd: str = None, check: bool = True) -> subprocess.Com
     """Exécute une commande shell."""
     print(f"{Colors.OKCYAN}▶️  {cmd}{Colors.ENDC}")
     try:
-        result = subprocess.run(
-            cmd, 
-            shell=True, 
-            cwd=cwd, 
-            check=check, 
-            capture_output=True, 
-            text=True
-        )
+        result = subprocess.run(cmd, shell=True, cwd=cwd, check=check, capture_output=True, text=True)
         if result.stdout:
             print(result.stdout)
         return result
@@ -80,9 +74,7 @@ def get_compose_command() -> str:
     """Retourne la commande docker compose disponible (plugin ou binaire legacy)."""
     # Préfère le plugin `docker compose` si disponible
     try:
-        result = subprocess.run(
-            "docker compose version", shell=True, check=False, capture_output=True, text=True
-        )
+        result = subprocess.run("docker compose version", shell=True, check=False, capture_output=True, text=True)
         if result.returncode == 0:
             return "docker compose"
     except Exception:
@@ -95,9 +87,9 @@ def get_compose_command() -> str:
 def check_prerequisites():
     """Vérifie les prérequis pour le déploiement."""
     print_header("Vérification des prérequis")
-    
+
     prerequisites = []
-    
+
     # Python
     if sys.version_info >= (3, 10):
         print_success(f"Python {sys.version.split()[0]} ✓")
@@ -105,7 +97,7 @@ def check_prerequisites():
     else:
         print_error("Python 3.10+ requis")
         prerequisites.append(False)
-    
+
     # Git
     try:
         result = run_command("git --version", check=False)
@@ -118,7 +110,7 @@ def check_prerequisites():
     except:
         print_warning("Git non trouvé (optionnel)")
         prerequisites.append(True)
-    
+
     # Docker (pour déploiement Docker)
     try:
         result = run_command("docker --version", check=False)
@@ -131,29 +123,24 @@ def check_prerequisites():
     except:
         print_warning("Docker non trouvé (requis pour déploiement Docker)")
         prerequisites.append(False)
-    
+
     return all(prerequisites)
 
 
 def validate_project_structure():
     """Valide la structure du projet."""
     print_header("Validation de la structure du projet")
-    
+
     required_files = [
         "src/ui/app.py",
         "src/auth/auth.py",
         "src/ai/chatbot.py",
         "src/data/database.py",
-        "requirements/requirements.txt"
+        "requirements/requirements.txt",
     ]
-    
-    optional_files = [
-        "docker/Dockerfile",
-        "docker/docker-compose.yml",
-        ".env",
-        "docs/README.md"
-    ]
-    
+
+    optional_files = ["docker/Dockerfile", "docker/docker-compose.yml", ".env", "docs/README.md"]
+
     missing_required = []
     for file_path in required_files:
         if Path(file_path).exists():
@@ -161,18 +148,18 @@ def validate_project_structure():
         else:
             print_error(f"{file_path} MANQUANT")
             missing_required.append(file_path)
-    
+
     print(f"\n{Colors.OKBLUE}📁 Fichiers optionnels:{Colors.ENDC}")
     for file_path in optional_files:
         if Path(file_path).exists():
             print_success(f"{file_path} ✓")
         else:
             print_warning(f"{file_path} non trouvé")
-    
+
     if missing_required:
         print_error(f"Fichiers manquants: {', '.join(missing_required)}")
         return False
-    
+
     print_success("Structure du projet validée !")
     return True
 
@@ -180,28 +167,28 @@ def validate_project_structure():
 def run_tests_before_deploy():
     """Lance les tests avant déploiement."""
     print_header("Tests avant déploiement")
-    
+
     # Tests unitaires
     print("🧪 Lancement des tests unitaires...")
     result = run_command("python -m pytest tests/ -v --tb=short", check=False)
     if result.returncode != 0:
         print_error("Tests unitaires échoués - déploiement annulé")
         return False
-    
+
     # Vérifications de qualité
     print("🔍 Vérifications de qualité du code...")
     quality_checks = [
         "python -m flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics",
         "python -m black --check src/ --quiet",
-        "python -m isort --check-only src/ --quiet"
+        "python -m isort --check-only src/ --quiet",
     ]
-    
+
     for cmd in quality_checks:
         result = run_command(cmd, check=False)
         if result.returncode != 0:
             print_warning("Vérifications de qualité échouées - continuons quand même")
             break
-    
+
     print_success("Tests réussis !")
     return True
 
@@ -223,21 +210,21 @@ def resolve_env_file(environment: str) -> str | None:
 def deploy_local(use_optimized: bool = False):
     """Déploiement local simple."""
     print_header("Déploiement local")
-    
+
     if not validate_project_structure():
         return False
-    
+
     # Installer/mettre à jour les dépendances
     print("📦 Installation des dépendances...")
     run_command("pip install -r requirements/requirements.txt")
-    
+
     # Lancer l'application
     app_file = "src/ui/app.py"  # Version modulaire (ex-refactored)
-    
+
     if not Path(app_file).exists():
         print_error(f"Fichier d'application non trouvé: {app_file}")
         return False
-    
+
     print_success("Déploiement local prêt !")
     print(f"{Colors.OKBLUE}🚀 Pour démarrer: streamlit run {app_file}{Colors.ENDC}")
     return True
@@ -246,26 +233,26 @@ def deploy_local(use_optimized: bool = False):
 def deploy_docker(environment: str = "production", build_only: bool = False):
     """Déploiement avec Docker."""
     print_header(f"Déploiement Docker ({environment})")
-    
+
     if not validate_project_structure():
         return False
-    
+
     # Vérifier Docker
     try:
         run_command("docker --version")
     except:
         print_error("Docker n'est pas disponible")
         return False
-    
+
     # Vérifier la structure Docker existante
     if not Path("docker/Dockerfile").exists():
         print_error("Dockerfile manquant dans docker/")
         return False
-    
+
     if not Path("docker/docker-compose.yml").exists():
         print_error("docker-compose.yml manquant dans docker/")
         return False
-    
+
     # Résoudre le fichier d'environnement
     env_file = resolve_env_file(environment)
 
@@ -274,13 +261,9 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
     project_name = f"comparemodelpoc_{environment}"
     compose_cmd_base = get_compose_command()
     print("🧹 Arrêt des conteneurs existants (compose down)...")
-    down_cmd = (
-        f"{compose_cmd_base} -p {project_name} -f {compose_file} down --remove-orphans"
-    )
+    down_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} down --remove-orphans"
     if env_file:
-        down_cmd = (
-            f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} down --remove-orphans"
-        )
+        down_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} down --remove-orphans"
     run_command(down_cmd, check=False)
 
     # Construction via docker compose pour utiliser le docker-compose.yml existant
@@ -298,26 +281,24 @@ def deploy_docker(environment: str = "production", build_only: bool = False):
     # Lancement avec Docker Compose
     print("🚀 Lancement de l'application avec Docker Compose...")
     # Up avec rebuild et suppression des orphelins pour éviter les conflits au redeploy
-    up_cmd = (
-        f"{compose_cmd_base} -p {project_name} -f {compose_file} up -d --build --remove-orphans"
-    )
+    up_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} up -d --build --remove-orphans"
     if env_file:
-        up_cmd = (
-            f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"
-        )
+        up_cmd = f"{compose_cmd_base} -p {project_name} -f {compose_file} --env-file {env_file} up -d --build --remove-orphans"
     run_command(up_cmd)
-    
+
     print_success("Application déployée avec Docker !")
     print(f"{Colors.OKBLUE}🌐 Accessible sur: http://localhost:8501{Colors.ENDC}")
     print(f"{Colors.OKCYAN}📋 Logs: {compose_cmd_base} -f docker/docker-compose.yml logs -f{Colors.ENDC}")
-    print(f"{Colors.OKCYAN}🛑 Arrêt: {compose_cmd_base} -p {project_name} -f docker/docker-compose.yml down --remove-orphans{Colors.ENDC}")
-    
+    print(
+        f"{Colors.OKCYAN}🛑 Arrêt: {compose_cmd_base} -p {project_name} -f docker/docker-compose.yml down --remove-orphans{Colors.ENDC}"
+    )
+
     return True
 
 
 def create_dockerfile():
     """Crée un Dockerfile optimisé."""
-    dockerfile_content = '''# 🐳 Dockerfile multi-stage optimisé - DnD AI GameMaster
+    dockerfile_content = """# 🐳 Dockerfile multi-stage optimisé - DnD AI GameMaster
 
 # Stage 1: Builder
 FROM python:3.11-slim as builder
@@ -367,17 +348,17 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \\
 
 # Commande par défaut
 CMD ["streamlit", "run", "src/ui/app.py"]
-'''
-    
+"""
+
     with open("Dockerfile", "w") as f:
         f.write(dockerfile_content)
-    
+
     print_success("Dockerfile créé")
 
 
 def create_docker_compose():
     """Crée un fichier docker-compose.yml."""
-    compose_content = '''version: '3.8'
+    compose_content = """version: '3.8'
 
 services:
   dnd-gamemaster:
@@ -416,34 +397,34 @@ services:
 
 volumes:
   app-data:
-'''
-    
+"""
+
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content)
-    
+
     print_success("docker-compose.yml créé")
 
 
 def create_production_package():
     """Crée un package de production."""
     print_header("Création du package de production")
-    
+
     # Créer un dossier temporaire
     package_name = f"dnd-gamemaster-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     package_path = Path(f"dist/{package_name}")
     package_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Fichiers à inclure
     files_to_include = [
         "src/",
-        "requirements/requirements.txt", 
+        "requirements/requirements.txt",
         "run_app.py",
         "README.md",
         "docs/",
         "Dockerfile",
-        "docker-compose.yml"
+        "docker-compose.yml",
     ]
-    
+
     print("📦 Copie des fichiers...")
     for item in files_to_include:
         src_path = Path(item)
@@ -455,24 +436,24 @@ def create_production_package():
             print_success(f"Copié: {item}")
         else:
             print_warning(f"Non trouvé: {item}")
-    
+
     # Créer les scripts de déploiement
     create_deployment_scripts(package_path)
-    
+
     # Créer l'archive
-    archive_path = shutil.make_archive(f"dist/{package_name}", 'zip', package_path)
-    
+    archive_path = shutil.make_archive(f"dist/{package_name}", "zip", package_path)
+
     print_success(f"Package créé: {archive_path}")
     print(f"{Colors.OKBLUE}📦 Taille: {Path(archive_path).stat().st_size / 1024 / 1024:.1f} MB{Colors.ENDC}")
-    
+
     return archive_path
 
 
 def create_deployment_scripts(package_path: Path):
     """Crée les scripts de déploiement pour le package."""
-    
+
     # Script de déploiement rapide
-    quick_deploy = '''#!/bin/bash
+    quick_deploy = """#!/bin/bash
 # 🚀 Script de déploiement rapide
 
 echo "🎲 Déploiement DnD AI GameMaster..."
@@ -490,13 +471,13 @@ echo "✅ Application déployée !"
 echo "🌐 Accessible sur: http://localhost:8501"
 echo "📋 Logs: docker-compose logs -f"
 echo "🛑 Arrêt: docker-compose down"
-'''
-    
+"""
+
     with open(package_path / "deploy.sh", "w") as f:
         f.write(quick_deploy)
-    
+
     # Script Windows
-    quick_deploy_bat = '''@echo off
+    quick_deploy_bat = """@echo off
 REM 🚀 Script de déploiement rapide Windows
 
 echo 🎲 Déploiement DnD AI GameMaster...
@@ -517,18 +498,18 @@ echo 🌐 Accessible sur: http://localhost:8501
 echo 📋 Logs: docker-compose logs -f
 echo 🛑 Arrêt: docker-compose down
 pause
-'''
-    
+"""
+
     with open(package_path / "deploy.bat", "w") as f:
         f.write(quick_deploy_bat)
-    
+
     print_success("Scripts de déploiement créés")
 
 
 def stop_deployment(environment: str = "development"):
     """Arrête les déploiements en cours."""
     print_header("Arrêt des déploiements")
-    
+
     # Arrêter Docker Compose (utilise le même fichier et projet que le déploiement)
     compose_file = "docker/docker-compose.yml"
     project_name = f"comparemodelpoc_{environment}"
@@ -536,10 +517,10 @@ def stop_deployment(environment: str = "development"):
         print("🐳 Arrêt de Docker Compose...")
         compose_cmd_base = get_compose_command()
         run_command(f"{compose_cmd_base} -p {project_name} -f {compose_file} down --remove-orphans", check=False)
-    
+
     # Arrêter les processus Streamlit
     try:
-        if os.name == 'nt':  # Windows
+        if os.name == "nt":  # Windows
             run_command("taskkill /f /im streamlit.exe", check=False)
         else:  # Linux/Mac
             run_command("pkill -f streamlit", check=False)
@@ -562,47 +543,47 @@ Exemples d'utilisation:
   python deploy.py docker --staging   # Déploiement staging
   python deploy.py package            # Créer un package de production
   python deploy.py stop               # Arrêter tous les déploiements
-        """
+        """,
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Commandes disponibles")
-    
+
     # Commande check
     subparsers.add_parser("check", help="Vérifie les prérequis de déploiement")
-    
+
     # Commande local
     local_parser = subparsers.add_parser("local", help="Déploiement local")
     local_parser.add_argument("--optimized", action="store_true", help="Utilise la version optimisée")
     local_parser.add_argument("--skip-tests", action="store_true", help="Ignore les tests")
-    
+
     # Commande docker
     docker_parser = subparsers.add_parser("docker", help="Déploiement Docker")
     docker_parser.add_argument("--staging", action="store_true", help="Environnement staging")
     docker_parser.add_argument("--production", action="store_true", help="Environnement production")
     docker_parser.add_argument("--build-only", action="store_true", help="Construit seulement l'image")
-    
+
     # Autres commandes
     subparsers.add_parser("package", help="Crée un package de production")
     subparsers.add_parser("stop", help="Arrête tous les déploiements")
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return
-    
+
     print(f"{Colors.HEADER}🚢 DnD AI GameMaster - Script de déploiement{Colors.ENDC}")
-    
+
     try:
         if args.command == "check":
             check_prerequisites()
             validate_project_structure()
-        
+
         elif args.command == "local":
             if not args.skip_tests and not run_tests_before_deploy():
                 return
             deploy_local(args.optimized)
-        
+
         elif args.command == "docker":
             if args.staging:
                 environment = "staging"
@@ -610,15 +591,15 @@ Exemples d'utilisation:
                 environment = "production"
             else:
                 environment = "development"
-            
+
             deploy_docker(environment, args.build_only)
-        
+
         elif args.command == "package":
             create_production_package()
-        
+
         elif args.command == "stop":
             stop_deployment()
-    
+
     except KeyboardInterrupt:
         print_warning("\nDéploiement interrompu par l'utilisateur")
         sys.exit(0)

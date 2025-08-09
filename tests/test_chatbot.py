@@ -112,6 +112,7 @@ class TestChatbot:
 
         # Créer une campagne pour les messages
         from src.data.models import create_campaign
+
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
 
         # Aucun historique au début
@@ -128,18 +129,20 @@ class TestChatbot:
         # Note: get_previous_history utilise get_campaign_messages qui peut avoir des restrictions
         # Vérifions si des messages ont été stockés
         from src.data.database import get_optimized_connection
+
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM messages WHERE user_id = ? AND campaign_id = ?", (user_id, campaign_id))
             count = cursor.fetchone()[0]
-        
+
         # Si les messages sont stockés mais get_previous_history ne les trouve pas,
         # il y a peut-être un problème avec la fonction
         if count == 3 and len(history) == 0:
             # Skip ce test pour l'instant car c'est un problème de logique métier
             import pytest
+
             pytest.skip("get_previous_history a un problème de logique - messages stockés mais non récupérés")
-        
+
         assert len(history) == 3
         assert history[0]["role"] == "user"
         assert history[0]["content"] == "Message 1"

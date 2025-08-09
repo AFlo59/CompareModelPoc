@@ -31,20 +31,20 @@ def test_db():
         # Initialiser la DB de test avec le nouveau schéma optimisé
         # Force la recréation pour s'assurer du bon schéma
         database.DatabaseConfig.DB_PATH.parent.mkdir(exist_ok=True)
-        
+
         with database.get_optimized_connection() as conn:
             # Supprimer toutes les tables existantes pour forcer la recréation
             cursor = conn.cursor()
             tables = ["performance_logs", "messages", "characters", "campaigns", "model_choices", "users", "schema_version"]
             for table in tables:
                 cursor.execute(f"DROP TABLE IF EXISTS {table}")
-            
+
             # Créer les tables avec le nouveau schéma
             database.DatabaseSchema.create_tables(conn)
-            
+
             # Exécuter les migrations
             database.DatabaseSchema.run_migrations(conn)
-            
+
             # Optimiser la base de données
             conn.execute("ANALYZE")
             conn.execute("PRAGMA optimize")
@@ -67,13 +67,14 @@ def test_db():
 def clean_db(test_db):
     """Fixture pour nettoyer la base de données entre les tests."""
     from src.data.database import DatabaseConnection
-    
+
     # Forcer une nouvelle connexion pour éviter les problèmes de connexion fermée
     DatabaseConnection._connection = None
-    
+
     # Nettoyer toutes les tables avant le test
     try:
         from src.data.database import get_optimized_connection
+
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
 
@@ -92,12 +93,13 @@ def clean_db(test_db):
     # Nettoyer après le test et fermer la connexion proprement
     try:
         from src.data.database import get_optimized_connection
+
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
             for table in tables:
                 cursor.execute(f"DELETE FROM {table}")
             conn.commit()
-        
+
         # Fermer et réinitialiser la connexion pour le test suivant
         if DatabaseConnection._connection:
             DatabaseConnection._connection.close()
@@ -118,7 +120,7 @@ def sample_user(clean_db):
         # Forcer une nouvelle connexion si nécessaire
         if DatabaseConnection._connection is None:
             DatabaseConnection._connection = None
-            
+
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
 
@@ -130,7 +132,7 @@ def sample_user(clean_db):
             # Vérifier si l'utilisateur existe déjà
             cursor.execute("SELECT id FROM users WHERE email = ?", ("test@example.com",))
             existing_user = cursor.fetchone()
-            
+
             if existing_user:
                 user_id = existing_user[0]
             else:

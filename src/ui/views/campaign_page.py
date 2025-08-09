@@ -8,6 +8,7 @@ from src.data.models import get_user_campaigns, create_campaign, update_campaign
 from src.ai.portraits import generate_gm_portrait
 from typing import List
 
+
 def show_campaign_page() -> None:
     """Page dédiée à la gestion des campagnes."""
     if not require_auth():
@@ -26,7 +27,7 @@ def show_campaign_page() -> None:
 
     # Récupération des campagnes existantes
     user_id = st.session_state.user["id"]
-    
+
     try:
         campaigns = get_user_campaigns(user_id)
     except Exception as e:
@@ -36,85 +37,81 @@ def show_campaign_page() -> None:
     # Section : Mes campagnes existantes
     if campaigns:
         st.subheader("📚 Mes Campagnes")
-        
+
         for campaign in campaigns:
             with st.expander(f"🎲 {campaign.get('name', 'Campagne sans nom')}"):
                 col1, col2, col3 = st.columns(3)
-                
+
                 with col1:
                     st.write(f"**Thèmes :** {campaign.get('themes', 'Non défini')}")
                 with col2:
                     st.write(f"**Langue :** {campaign.get('language', 'Non défini')}")
                 with col3:
                     if st.button(f"🚀 Jouer", key=f"play_{campaign['id']}"):
-                        st.session_state.selected_campaign = campaign['id']
+                        st.session_state.selected_campaign = campaign["id"]
                         st.session_state.page = "chatbot"
                         st.rerun()
-        
+
         st.divider()
-    
+
     # Section : Créer une nouvelle campagne
     st.subheader("➕ Créer une Nouvelle Campagne")
-    
+
     with st.form("create_campaign_form"):
         # Nom de la campagne
         campaign_name = st.text_input(
-            "🏷️ Nom de la campagne",
-            placeholder="Ma Campagne Épique",
-            help="Donnez un nom mémorable à votre campagne"
+            "🏷️ Nom de la campagne", placeholder="Ma Campagne Épique", help="Donnez un nom mémorable à votre campagne"
         )
-        
+
         # Thèmes
         col1, col2 = st.columns(2)
-        
+
         with col1:
             primary_theme = st.selectbox(
                 "🎭 Thème principal",
                 ["Fantasy", "Science-Fiction", "Horror", "Moderne", "Post-Apocalyptique", "Steampunk", "Cyberpunk"],
-                help="Le thème principal de votre campagne"
+                help="Le thème principal de votre campagne",
             )
-        
+
         with col2:
             secondary_themes = st.multiselect(
                 "🎨 Thèmes secondaires (optionnel)",
                 ["Aventure", "Mystère", "Romance", "Politique", "Guerre", "Exploration", "Magie", "Technologie"],
-                help="Thèmes additionnels pour enrichir votre campagne"
+                help="Thèmes additionnels pour enrichir votre campagne",
             )
-        
+
         # Langue, modèle IA et style
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             language = st.selectbox(
-                "🌍 Langue",
-                ["Français", "English", "Español", "Deutsch"],
-                help="Langue principale pour la narration"
+                "🌍 Langue", ["Français", "English", "Español", "Deutsch"], help="Langue principale pour la narration"
             )
-        
+
         with col2:
             ai_model = st.selectbox(
                 "🤖 Modèle IA du Maître de Jeu",
                 ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"],
-                help="Le modèle IA qui gérera le chat et la narration"
+                help="Le modèle IA qui gérera le chat et la narration",
             )
-        
+
         with col3:
             tone = st.selectbox(
                 "🎪 Ton de la campagne",
                 ["Épique", "Sombre", "Léger", "Humoristique", "Sérieux", "Dramatique"],
-                help="L'ambiance générale de votre campagne"
+                help="L'ambiance générale de votre campagne",
             )
-        
+
         # Description
         description = st.text_area(
             "📝 Description (optionnel)",
             placeholder="Décrivez l'univers, l'histoire de fond, les enjeux...",
-            help="Plus de détails aideront l'IA à créer une meilleure expérience"
+            help="Plus de détails aideront l'IA à créer une meilleure expérience",
         )
-        
+
         # Bouton de création
         submitted = st.form_submit_button("🚀 Créer la Campagne", use_container_width=True)
-        
+
         if submitted:
             if not campaign_name.strip():
                 st.error("❌ Le nom de la campagne est obligatoire !")
@@ -124,7 +121,7 @@ def show_campaign_page() -> None:
                     all_themes = [primary_theme] + secondary_themes
                     if tone not in all_themes:
                         all_themes.append(tone)
-                    
+
                     with st.spinner("🏕️ Création de la campagne et génération du portrait du MJ..."):
                         # Créer la campagne avec le modèle IA
                         campaign_id = create_campaign(
@@ -132,23 +129,23 @@ def show_campaign_page() -> None:
                             name=campaign_name.strip(),
                             themes=all_themes,
                             language=language,
-                            ai_model=ai_model  # Nouveau paramètre
+                            ai_model=ai_model,  # Nouveau paramètre
                         )
-                        
+
                         st.success(f"✅ Campagne '{campaign_name}' créée avec succès !")
-                        
+
                         # Générer le portrait du Maître de Jeu
                         try:
                             st.info("🎨 Génération du portrait du Maître de Jeu...")
-                            
+
                             # Préparer le thème pour le portrait
                             main_theme = primary_theme.lower()
                             gm_portrait_url = generate_gm_portrait(campaign_theme=main_theme)
-                            
+
                             if gm_portrait_url:
                                 st.success("🎨 Portrait du Maître de Jeu généré !")
                                 st.image(gm_portrait_url, width=200, caption="Votre Maître de Jeu")
-                                
+
                                 # Sauvegarder l'URL du portrait dans la campagne
                                 if update_campaign_portrait(campaign_id, gm_portrait_url):
                                     st.success("💾 Portrait du MJ sauvegardé !")
@@ -156,23 +153,24 @@ def show_campaign_page() -> None:
                                     st.warning("⚠️ Portrait généré mais erreur de sauvegarde")
                             else:
                                 st.warning("⚠️ Impossible de générer le portrait du MJ (clé API manquante?)")
-                                
+
                         except Exception as e:
                             st.warning(f"⚠️ Erreur lors de la génération du portrait du MJ : {e}")
-                        
+
                         # Redirection vers la création de personnage
                         st.success("🧙‍♂️ **Prochaine étape :** Créez votre personnage !")
                         st.info(f"**Modèle sélectionné :** {ai_model} gérera votre aventure")
-                        
+
                         # Sauvegarder l'ID de la campagne pour la création de personnage
                         st.session_state.selected_campaign = campaign_id
-                        
+
                         # Petite pause puis redirection vers création personnage
                         import time
+
                         time.sleep(3)
                         st.session_state.page = "character"
                         st.rerun()
-                    
+
                 except Exception as e:
                     st.error(f"❌ Erreur lors de la création : {e}")
                     st.warning("💡 **Conseil :** Essayez de rafraîchir la page")
@@ -180,10 +178,12 @@ def show_campaign_page() -> None:
     # Section aide
     st.divider()
     st.markdown("### 💡 Conseils pour créer une bonne campagne")
-    
-    st.markdown("""
+
+    st.markdown(
+        """
     - **🎯 Nom évocateur** : Choisissez un nom qui inspire l'aventure
     - **🎭 Thèmes cohérents** : Mélangez les thèmes avec parcimonie
     - **📝 Description détaillée** : Plus vous donnez d'infos, mieux l'IA comprendra votre vision
     - **🌍 Langue** : Assurez-vous que tous les joueurs parlent la langue choisie
-    """)
+    """
+    )
