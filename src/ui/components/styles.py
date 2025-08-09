@@ -4,6 +4,7 @@ Styles CSS et configuration de l'interface utilisateur
 
 import streamlit as st
 
+
 def apply_custom_css():
     """Applique les styles CSS personnalisés."""
     st.markdown(
@@ -186,13 +187,14 @@ def apply_custom_css():
         unsafe_allow_html=True,
     )
 
+
 def create_styled_button(label: str, key: str, button_type: str = "primary", use_container_width: bool = True):
     """
     Crée un bouton stylé selon son type.
-    
+
     Args:
         label: Texte du bouton
-        key: Clé unique du bouton  
+        key: Clé unique du bouton
         button_type: Type de bouton ("primary", "success", "danger", "warning", "info")
         use_container_width: Utiliser toute la largeur
     """
@@ -200,30 +202,29 @@ def create_styled_button(label: str, key: str, button_type: str = "primary", use
     css_classes = {
         "primary": "",  # Style par défaut (gradient bleu-violet)
         "success": "btn-success",
-        "danger": "btn-danger", 
+        "danger": "btn-danger",
         "warning": "btn-warning",
-        "info": "btn-info"
+        "info": "btn-info",
     }
-    
+
     css_class = css_classes.get(button_type, "")
-    
+
     # Injecter le CSS pour ce bouton spécifique si nécessaire
     if css_class:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <style>
         div[data-testid="stButton"] button[key="{key}"] {{
             background: var(--{button_type}-bg) !important;
         }}
         </style>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     return st.button(label, key=key, use_container_width=use_container_width)
+
 
 def configure_page():
     """Configure la page Streamlit."""
-    st.set_page_config(
-        page_title="DnD AI GameMaster", 
-        page_icon="🎲", 
-        layout="wide", 
-        initial_sidebar_state="expanded"
-    )
+    st.set_page_config(page_title="DnD AI GameMaster", page_icon="🎲", layout="wide", initial_sidebar_state="expanded")

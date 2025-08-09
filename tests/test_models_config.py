@@ -17,7 +17,7 @@ from src.ai.models_config import (
     get_model_config,
     get_available_model_names,
     calculate_estimated_cost,
-    CHAT_DEFAULTS
+    CHAT_DEFAULTS,
 )
 
 
@@ -34,9 +34,9 @@ class TestModelConfig:
             temperature_default=0.7,
             cost_per_1k_input=0.01,
             cost_per_1k_output=0.02,
-            description="Un modèle de test"
+            description="Un modèle de test",
         )
-        
+
         assert config.name == "Test Model"
         assert config.api_name == "test-model"
         assert config.provider == "test_provider"
@@ -58,9 +58,9 @@ class TestModelConfig:
             cost_per_1k_input=0.01,
             cost_per_1k_output=0.02,
             description="Test",
-            supports_system_messages=False
+            supports_system_messages=False,
         )
-        
+
         assert config.supports_system_messages is False
 
 

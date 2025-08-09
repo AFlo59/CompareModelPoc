@@ -141,5 +141,3 @@ class TestChatbotLaunchFlow:
         args_list = mock_store_msg.call_args_list
         assert len(args_list) == 2
         assert "Erreur inattendue" in args_list[1].args[2]
-
-

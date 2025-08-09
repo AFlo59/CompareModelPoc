@@ -16,7 +16,6 @@ def test_database_init_and_tables(test_db):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row[0] for row in cursor.fetchall()]
 
-
     expected = {"users", "model_choices", "campaigns", "characters", "messages", "performance_logs"}
     assert expected.issubset(set(tables)), f"Tables manquantes: {expected - set(tables)}"
 
@@ -59,7 +58,6 @@ def test_campaigns_table_structure(test_db):
     cursor.execute("PRAGMA table_info(campaigns)")
     columns = cursor.fetchall()
 
-
     column_names = [col[1] for col in columns]
     expected_columns = ["id", "user_id", "name", "themes", "language"]
 
@@ -74,7 +72,6 @@ def test_characters_table_structure(test_db):
 
     cursor.execute("PRAGMA table_info(characters)")
     columns = cursor.fetchall()
-
 
     column_names = [col[1] for col in columns]
     expected_columns = ["id", "user_id", "name", "class", "race", "description", "portrait_url"]

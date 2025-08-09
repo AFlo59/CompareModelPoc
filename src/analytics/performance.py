@@ -290,18 +290,18 @@ def show_ai_performance(user_id: int) -> None:
 def show_system_monitoring() -> None:
     """Affiche les informations de monitoring système."""
     st.title("🖥️ Monitoring Système")
-    
+
     st.info("📊 **Informations Système** - Vue d'ensemble de l'état du système")
-    
+
     try:
         import psutil
         import platform
-        
+
         st.success("✅ Module psutil détecté")
-        
+
         # Informations générales
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             try:
                 ram_percent = psutil.virtual_memory().percent
@@ -309,7 +309,7 @@ def show_system_monitoring() -> None:
             except Exception as e:
                 st.metric("💾 RAM utilisée", "Erreur")
                 st.error(f"Erreur RAM: {e}")
-                
+
         with col2:
             try:
                 cpu_percent = psutil.cpu_percent(interval=0.1)  # Interval plus court
@@ -321,70 +321,71 @@ def show_system_monitoring() -> None:
             try:
                 # Essayer '/' d'abord (Linux/Docker), puis 'C:' (Windows)
                 try:
-                    disk_usage = psutil.disk_usage('/')
+                    disk_usage = psutil.disk_usage("/")
                 except:
-                    disk_usage = psutil.disk_usage('C:')
+                    disk_usage = psutil.disk_usage("C:")
                 disk_percent = (disk_usage.used / disk_usage.total) * 100
                 st.metric("💿 Disque utilisé", f"{disk_percent:.1f}%")
             except Exception as e:
                 st.metric("💿 Disque utilisé", "N/A")
-        
+
         st.divider()
-        
+
         # Informations détaillées
         st.subheader("📋 Détails du système")
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**🖥️ Système d'exploitation**")
             st.write(f"• **OS:** {platform.system()} {platform.release()}")
             st.write(f"• **Architecture:** {platform.machine()}")
             st.write(f"• **Processeur:** {platform.processor()}")
-            
+
         with col2:
             st.markdown("**💾 Mémoire**")
             memory = psutil.virtual_memory()
             st.write(f"• **Total:** {memory.total / (1024**3):.1f} GB")
             st.write(f"• **Disponible:** {memory.available / (1024**3):.1f} GB")
             st.write(f"• **Utilisée:** {memory.used / (1024**3):.1f} GB")
-        
+
         # Status de l'application
         st.divider()
         st.subheader("🚀 État de l'application")
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             st.success("✅ Base de données connectée")
         with col2:
             st.success("✅ Streamlit actif")
         with col3:
             st.success("✅ API endpoints disponibles")
-            
+
     except ImportError:
         st.warning("⚠️ Module `psutil` non installé - Monitoring système limité")
-        
+
         # Version simplifiée sans psutil
         st.subheader("📋 Informations basiques")
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             # Importer platform ici pour éviter UnboundLocalError lorsque l'import dans le bloc try a échoué
             import platform  # noqa: F401
+
             st.markdown("**🖥️ Système**")
             st.write(f"• **OS:** {platform.system()}")
             st.write(f"• **Version:** {platform.release()}")
-            
+
         with col2:
             st.markdown("**🚀 Application**")
             st.success("✅ Streamlit actif")
             st.success("✅ Base de données connectée")
-            
+
     except Exception as e:
         st.error(f"❌ Erreur lors du monitoring système: {e}")
-        
+
         # Fallback basique
         st.subheader("📋 État basique")
         st.success("✅ Application fonctionnelle")

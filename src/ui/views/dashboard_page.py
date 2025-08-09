@@ -6,6 +6,7 @@ import streamlit as st
 from src.auth.auth import require_auth, logout
 from src.data.models import get_user_campaigns, get_campaign_messages
 
+
 def show_dashboard_page() -> None:
     """Affiche le dashboard principal après connexion."""
     if not require_auth():
@@ -56,9 +57,7 @@ def show_dashboard_page() -> None:
             st.markdown("**Campagnes disponibles :**")
             for i, camp in enumerate(campaigns[:5]):  # Afficher jusqu'à 5 campagnes
                 if st.button(
-                    f"🏰 {camp['name']} ({camp.get('message_count', 0)} msg)", 
-                    key=f"quick_camp_{i}", 
-                    use_container_width=True
+                    f"🏰 {camp['name']} ({camp.get('message_count', 0)} msg)", key=f"quick_camp_{i}", use_container_width=True
                 ):
                     st.session_state.campaign = camp
                     # Charger l'historique

@@ -52,7 +52,12 @@ class TestDatabaseModels:
 
         # Créer une campagne avec portrait MJ
         campaign_id = create_campaign(
-            user_id, "Test Campaign", ["Fantasy", "Adventure"], "fr", ai_model="GPT-4", gm_portrait="https://example.com/gm_portrait.jpg"
+            user_id,
+            "Test Campaign",
+            ["Fantasy", "Adventure"],
+            "fr",
+            ai_model="GPT-4",
+            gm_portrait="https://example.com/gm_portrait.jpg",
         )
 
         # Vérifier la création
@@ -274,18 +279,18 @@ class TestDatabaseModels:
     def test_update_campaign_portrait(self, sample_user):
         """Test de mise à jour du portrait d'une campagne."""
         from src.data.models import update_campaign_portrait
-        
+
         user_id = sample_user["id"]
-        
+
         # Créer une campagne
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
-        
+
         # Mettre à jour le portrait
         portrait_url = "https://example.com/gm_portrait.jpg"
         result = update_campaign_portrait(campaign_id, portrait_url)
-        
+
         assert result is True
-        
+
         # Vérifier que le portrait a été sauvegardé
         campaigns = get_user_campaigns(user_id)
         assert len(campaigns) == 1
@@ -294,27 +299,23 @@ class TestDatabaseModels:
     def test_update_character_portrait(self, sample_user):
         """Test de mise à jour du portrait d'un personnage."""
         from src.data.models import update_character_portrait
-        
+
         user_id = sample_user["id"]
-        
+
         # Créer une campagne d'abord
         campaign_id = create_campaign(user_id, "Test Campaign", ["Fantasy"], "fr")
-        
+
         # Créer un personnage
         character_id = create_character(
-            user_id=user_id,
-            name="Test Character", 
-            char_class="Guerrier", 
-            race="Humain",
-            campaign_id=campaign_id
+            user_id=user_id, name="Test Character", char_class="Guerrier", race="Humain", campaign_id=campaign_id
         )
-        
+
         # Mettre à jour le portrait
         portrait_url = "https://example.com/character_portrait.jpg"
         result = update_character_portrait(character_id, portrait_url)
-        
+
         assert result is True
-        
+
         # Vérifier que le portrait a été sauvegardé
         characters = get_user_characters(user_id)
         assert len(characters) == 1
@@ -323,11 +324,11 @@ class TestDatabaseModels:
     def test_update_portrait_invalid_ids(self):
         """Test de mise à jour de portrait avec des IDs invalides."""
         from src.data.models import update_campaign_portrait, update_character_portrait
-        
+
         # Test avec des IDs inexistants
         result1 = update_campaign_portrait(999999, "https://example.com/portrait.jpg")
         assert result1 is False
-        
+
         result2 = update_character_portrait(999999, "https://example.com/portrait.jpg")
         assert result2 is False
 

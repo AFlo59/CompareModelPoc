@@ -88,10 +88,11 @@ class TestChatbotAdditional:
 
     def test_alias_functions_forwarding(self):
         """Couvre les alias pour la rétrocompatibilité (lignes 269-283, 277-279)."""
-        with patch("src.ai.chatbot.store_message_optimized") as sm, \
-             patch("src.ai.chatbot.store_performance_optimized") as sp, \
-             patch("src.ai.chatbot.launch_chat_interface_optimized") as lci, \
-             patch("src.ai.chatbot.call_ai_model_optimized") as cam:
+        with patch("src.ai.chatbot.store_message_optimized") as sm, patch(
+            "src.ai.chatbot.store_performance_optimized"
+        ) as sp, patch("src.ai.chatbot.launch_chat_interface_optimized") as lci, patch(
+            "src.ai.chatbot.call_ai_model_optimized"
+        ) as cam:
             from src.ai.chatbot import store_message, store_performance, launch_chat_interface, call_ai_model
 
             store_message(1, "user", "hello", 1)
@@ -113,5 +114,3 @@ class TestChatbotAdditional:
 
         result = get_previous_history(1, 2)
         assert result == []
-
-

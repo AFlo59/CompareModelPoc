@@ -50,9 +50,9 @@ class TestAPIClientManager:
         # Nettoyer le cache avant le test
         APIClientManager.get_openai_client.cache_clear()
         APIClientManager._openai_client = None
-        
+
         # Supprimer explicitement toutes les clés API possibles
-        env_clear = {key: "" for key in os.environ.keys() if 'API_KEY' in key}
+        env_clear = {key: "" for key in os.environ.keys() if "API_KEY" in key}
         with patch.dict(os.environ, env_clear, clear=False):
             client = APIClientManager.get_openai_client()
             assert client is None
@@ -78,51 +78,38 @@ class TestAPIClientManager:
         # Nettoyer le cache avant le test
         APIClientManager.get_anthropic_client.cache_clear()
         APIClientManager._anthropic_client = None
-        
+
         # Supprimer explicitement toutes les clés API possibles
-        env_clear = {key: "" for key in os.environ.keys() if 'API_KEY' in key}
+        env_clear = {key: "" for key in os.environ.keys() if "API_KEY" in key}
         with patch.dict(os.environ, env_clear, clear=False):
             client = APIClientManager.get_anthropic_client()
             assert client is None
 
-    @patch.dict(os.environ, {
-        "OPENAI_API_KEY": "test-openai",
-        "ANTHROPIC_API_KEY": "test-anthropic",
-        "DEEPSEEK_API_KEY": "test-deepseek"
-    })
+    @patch.dict(
+        os.environ,
+        {"OPENAI_API_KEY": "test-openai", "ANTHROPIC_API_KEY": "test-anthropic", "DEEPSEEK_API_KEY": "test-deepseek"},
+    )
     def test_validate_api_keys_all_present(self):
         """Test de validation quand toutes les clés sont présentes."""
         status = APIClientManager.validate_api_keys()
-        
-        expected = {
-            "openai": True,
-            "anthropic": True,
-            "deepseek": True
-        }
+
+        expected = {"openai": True, "anthropic": True, "deepseek": True}
         assert status == expected
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-openai"}, clear=True)
     def test_validate_api_keys_partial(self):
         """Test de validation avec seulement certaines clés."""
         status = APIClientManager.validate_api_keys()
-        
-        expected = {
-            "openai": True,
-            "anthropic": False,
-            "deepseek": False
-        }
+
+        expected = {"openai": True, "anthropic": False, "deepseek": False}
         assert status == expected
 
     @patch.dict(os.environ, {}, clear=True)
     def test_validate_api_keys_none(self):
         """Test de validation sans aucune clé."""
         status = APIClientManager.validate_api_keys()
-        
-        expected = {
-            "openai": False,
-            "anthropic": False,
-            "deepseek": False
-        }
+
+        expected = {"openai": False, "anthropic": False, "deepseek": False}
         assert status == expected
 
 

@@ -21,6 +21,7 @@ from src.data.database import init_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def initialize_app() -> None:
     """Initialise l'application."""
     try:
@@ -31,16 +32,17 @@ def initialize_app() -> None:
         logger.error(f"Erreur initialisation: {e}")
         st.stop()
 
+
 def show_navigation() -> None:
     """Affiche la navigation dans la sidebar."""
     # Vérifier si l'utilisateur est connecté
     user = st.session_state.get("user", None)
-    
+
     if user:
         with st.sidebar:
-            
             # Info utilisateur
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div style="
                 background: rgba(102, 126, 234, 0.1);
                 padding: 0.8rem;
@@ -50,23 +52,25 @@ def show_navigation() -> None:
             ">
                 <strong>👤 {user.get('email', 'Utilisateur')}</strong>
             </div>
-            """, unsafe_allow_html=True)
-            
+            """,
+                unsafe_allow_html=True,
+            )
+
             # Navigation principale
             nav_pages = {
                 "🏠 Tableau de bord": "dashboard",
-                "💬 Chat avec IA": "chatbot", 
+                "💬 Chat avec IA": "chatbot",
                 "📊 Performances": "performance",
-                "⚙️ Paramètres": "settings"
+                "⚙️ Paramètres": "settings",
             }
-            
+
             for label, page_key in nav_pages.items():
                 if st.button(label, key=page_key, use_container_width=True):
                     st.session_state.page = page_key
                     st.rerun()
-            
+
             st.markdown("---")
-            
+
             # Déconnexion avec style danger
             if st.button("🚪 Déconnexion", key="logout", use_container_width=True):
                 # Clear user session
@@ -75,14 +79,15 @@ def show_navigation() -> None:
                 st.session_state.page = "auth"
                 st.rerun()
 
+
 def main() -> None:
     """Fonction principale de l'application."""
     # Configuration de la page
     configure_page()
-    
+
     # Application des styles CSS
     apply_custom_css()
-    
+
     # Initialisation SEULEMENT au premier chargement
     if "app_initialized" not in st.session_state:
         initialize_app()
@@ -119,6 +124,7 @@ def main() -> None:
         st.error(f"Page inconnue: {current_page}")
         st.session_state.page = "auth"
         st.rerun()
+
 
 if __name__ == "__main__":
     main()

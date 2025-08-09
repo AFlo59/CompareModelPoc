@@ -4,7 +4,15 @@ import sys
 from pathlib import Path
 
 # Vérification des fichiers essentiels (sans .env pour Docker)
-required_files = ["src/ui/app.py", "src/data/database.py", "src/auth/auth.py", "src/data/models.py", "src/ai/chatbot.py", "src/ai/portraits.py", "src/analytics/performance.py"]
+required_files = [
+    "src/ui/app.py",
+    "src/data/database.py",
+    "src/auth/auth.py",
+    "src/data/models.py",
+    "src/ai/chatbot.py",
+    "src/ai/portraits.py",
+    "src/analytics/performance.py",
+]
 
 missing_files = [f for f in required_files if not Path(f).exists()]
 if missing_files:
@@ -14,6 +22,7 @@ if missing_files:
 # Chargement des variables d'environnement (optionnel en local)
 try:
     from dotenv import load_dotenv
+
     env_file = Path(".env")
     if env_file.exists():
         load_dotenv()

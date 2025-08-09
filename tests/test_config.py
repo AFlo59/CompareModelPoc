@@ -17,17 +17,9 @@ class TestProjectStructure:
     def test_src_structure_exists(self):
         """Test que la structure src/ existe."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
-        expected_dirs = [
-            "src",
-            "src/ui",
-            "src/auth", 
-            "src/ai",
-            "src/data",
-            "src/analytics",
-            "src/core"
-        ]
-        
+
+        expected_dirs = ["src", "src/ui", "src/auth", "src/ai", "src/data", "src/analytics", "src/core"]
+
         for dir_path in expected_dirs:
             full_path = os.path.join(project_root, dir_path)
             assert os.path.exists(full_path), f"Directory {dir_path} should exist"
@@ -36,7 +28,7 @@ class TestProjectStructure:
     def test_main_modules_exist(self):
         """Test que les modules principaux existent."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
+
         expected_files = [
             "src/ui/app.py",
             "src/auth/auth.py",
@@ -45,9 +37,9 @@ class TestProjectStructure:
             "src/data/database.py",
             "src/data/models.py",
             "src/analytics/performance.py",
-            "src/core/config.py"
+            "src/core/config.py",
         ]
-        
+
         for file_path in expected_files:
             full_path = os.path.join(project_root, file_path)
             assert os.path.exists(full_path), f"File {file_path} should exist"
@@ -56,15 +48,15 @@ class TestProjectStructure:
     def test_supporting_modules_exist(self):
         """Test que les modules de support existent."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
+
         supporting_files = [
             "src/ai/api_client.py",
-            "src/ai/models_config.py", 
+            "src/ai/models_config.py",
             "src/analytics/performance.py",
             "src/analytics/system_monitoring.py",
-            "src/core/config.py"
+            "src/core/config.py",
         ]
-        
+
         for file_path in supporting_files:
             full_path = os.path.join(project_root, file_path)
             assert os.path.exists(full_path), f"Supporting file {file_path} should exist"
@@ -72,7 +64,7 @@ class TestProjectStructure:
     def test_ui_components_exist(self):
         """Test que les composants UI existent."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
+
         ui_files = [
             "src/ui/components/styles.py",
             "src/ui/views/auth_page.py",
@@ -80,9 +72,9 @@ class TestProjectStructure:
             "src/ui/views/chatbot_page.py",
             "src/ui/views/performance_page.py",
             "src/ui/views/settings_page.py",
-            "src/ui/app.py"  # Version modulaire (ex-refactored)
+            "src/ui/app.py",  # Version modulaire (ex-refactored)
         ]
-        
+
         for file_path in ui_files:
             full_path = os.path.join(project_root, file_path)
             assert os.path.exists(full_path), f"UI file {file_path} should exist"
@@ -90,7 +82,7 @@ class TestProjectStructure:
     def test_test_files_exist(self):
         """Test que tous les fichiers de test existent."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
+
         test_files = [
             "tests/conftest.py",
             "tests/test_app.py",
@@ -103,9 +95,9 @@ class TestProjectStructure:
             "tests/test_database.py",
             "tests/test_integration_ai.py",
             "tests/test_ui_components.py",
-            "tests/test_config.py"
+            "tests/test_config.py",
         ]
-        
+
         for file_path in test_files:
             full_path = os.path.join(project_root, file_path)
             assert os.path.exists(full_path), f"Test file {file_path} should exist"
@@ -122,6 +114,7 @@ class TestImportability:
             from src.auth import auth
             from src.ai import chatbot, portraits
             from src.analytics import performance
+
             assert True  # Si on arrive ici, tous les imports ont réussi
         except ImportError as e:
             pytest.fail(f"Failed to import core modules: {e}")
@@ -132,6 +125,7 @@ class TestImportability:
             from src.ai import api_client, models_config
             from src.analytics import performance, system_monitoring
             from src.core import config
+
             assert True
         except ImportError as e:
             pytest.fail(f"Failed to import supporting modules: {e}")
@@ -142,6 +136,7 @@ class TestImportability:
             from src.ui import app
             from src.ui.components import styles
             from src.ui.views import auth_page, dashboard_page, chatbot_page
+
             assert True
         except ImportError as e:
             pytest.fail(f"Failed to import UI modules: {e}")
@@ -165,13 +160,9 @@ class TestConfiguration:
     def test_docker_files_exist(self):
         """Test que les fichiers Docker existent."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
-        docker_files = [
-            ("docker", "Dockerfile"),
-            ("docker", "docker-compose.yml"),
-            (".", ".dockerignore")
-        ]
-        
+
+        docker_files = [("docker", "Dockerfile"), ("docker", "docker-compose.yml"), (".", ".dockerignore")]
+
         for folder, file_name in docker_files:
             file_path = os.path.join(project_root, folder, file_name)
             assert os.path.exists(file_path), f"Docker file {folder}/{file_name} should exist"
@@ -180,18 +171,13 @@ class TestConfiguration:
         """Test que la documentation existe."""
         project_root = os.path.join(os.path.dirname(__file__), "..")
         docs_dir = os.path.join(project_root, "docs")
-        
+
         assert os.path.exists(docs_dir)
         assert os.path.isdir(docs_dir)
-        
+
         # Vérifier quelques fichiers de documentation clés
-        doc_files = [
-            "README.md",
-            "DEPLOYMENT_GUIDE.md",
-            "TECHNICAL_GUIDE.md",
-            "USER_GUIDE.md"
-        ]
-        
+        doc_files = ["README.md", "DEPLOYMENT_GUIDE.md", "TECHNICAL_GUIDE.md", "USER_GUIDE.md"]
+
         for doc_file in doc_files:
             doc_path = os.path.join(docs_dir, doc_file)
             assert os.path.exists(doc_path), f"Documentation {doc_file} should exist"
@@ -204,6 +190,7 @@ class TestModuleVersions:
         """Test que le package src a une version."""
         try:
             from src import __version__
+
             assert isinstance(__version__, str)
             assert len(__version__) > 0
         except (ImportError, AttributeError):
@@ -213,6 +200,7 @@ class TestModuleVersions:
         """Test que le package src a un auteur."""
         try:
             from src import __author__
+
             assert isinstance(__author__, str)
             assert len(__author__) > 0
         except (ImportError, AttributeError):
@@ -225,23 +213,17 @@ class TestCodeQuality:
     def test_no_syntax_errors_in_main_modules(self):
         """Test qu'il n'y a pas d'erreurs de syntaxe dans les modules principaux."""
         import ast
-        
+
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
-        python_files = [
-            "src/ui/app.py",
-            "src/auth/auth.py",
-            "src/ai/chatbot.py",
-            "src/data/database.py",
-            "src/data/models.py"
-        ]
-        
+
+        python_files = ["src/ui/app.py", "src/auth/auth.py", "src/ai/chatbot.py", "src/data/database.py", "src/data/models.py"]
+
         for file_path in python_files:
             full_path = os.path.join(project_root, file_path)
             if os.path.exists(full_path):
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                
+
                 try:
                     ast.parse(content)
                 except SyntaxError as e:
@@ -250,24 +232,24 @@ class TestCodeQuality:
     def test_no_syntax_errors_in_optimized_modules(self):
         """Test qu'il n'y a pas d'erreurs de syntaxe dans les modules optimisés."""
         import ast
-        
+
         project_root = os.path.join(os.path.dirname(__file__), "..")
-        
+
         optimized_files = [
             "src/ai/api_client.py",
             "src/ai/models_config.py",
             "src/ai/chatbot_optimized.py",
             "src/auth/auth_optimized.py",
             "src/data/database_optimized.py",
-            "src/data/models_optimized.py"
+            "src/data/models_optimized.py",
         ]
-        
+
         for file_path in optimized_files:
             full_path = os.path.join(project_root, file_path)
             if os.path.exists(full_path):
-                with open(full_path, 'r', encoding='utf-8') as f:
+                with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                
+
                 try:
                     ast.parse(content)
                 except SyntaxError as e:

@@ -14,6 +14,7 @@ def show_performance(user_id: int) -> None:
     # - le patch sur src.analytics.performance.show_performance fonctionne (appel délégué)
     return performance.show_performance(user_id)
 
+
 def show_performance_page() -> None:
     """Page dédiée aux performances."""
     if not require_auth():
