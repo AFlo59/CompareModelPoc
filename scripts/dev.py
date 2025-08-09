@@ -200,9 +200,10 @@ def run_app(mode: str = "legacy"):
     print_header(f"Lancement de l'application ({mode})")
     
     # Vérifier les fichiers requis
-    if not Path(".env").exists():
-        print_warning("Fichier .env manquant - créez-le avec vos clés API")
-        create_env_template()
+    if Path(".env").exists():
+        print_success("Fichier .env détecté – utilisation en local")
+    else:
+        print_warning("Fichier .env manquant – l'application peut fonctionner avec des fonctionnalités limitées")
     
     if mode == "refactored" or mode == "legacy":
         app_file = "src/ui/app_legacy.py" if mode == "legacy" else "src/ui/app.py"

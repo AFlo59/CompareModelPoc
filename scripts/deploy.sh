@@ -44,17 +44,11 @@ check_docker() {
 
 # Vérifier les variables d'environnement
 check_env() {
-    if [ ! -f .env ]; then
-        log_warning "Fichier .env non trouvé. Copie depuis .env.example..."
-        cp .env.example .env
-        log_warning "Veuillez éditer le fichier .env avec vos clés API avant de continuer."
-        read -p "Appuyez sur Entrée quand c'est fait..."
-    fi
-
-    # Vérifier que les clés importantes sont définies
-    source .env
-    if [ -z "$OPENAI_API_KEY" ] || [ "$OPENAI_API_KEY" = "sk-your-openai-api-key-here" ]; then
-        log_warning "OPENAI_API_KEY n'est pas configurée correctement dans .env"
+    if [ -f .env ]; then
+        log_info ".env détecté – variables chargées"
+        set -a; . ./.env; set +a
+    else
+        log_warning ".env absent – variables attendues dans l'environnement système"
     fi
 }
 
@@ -93,10 +87,18 @@ deploy_dev() {
 
     # Build et démarrage
     log_info "Construction de l'image Docker..."
-    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
+    if [ -f .env ]; then
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file .env build
+    else
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
+    fi
     
     log_info "Démarrage des services..."
-    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d --remove-orphans
+    if [ -f .env ]; then
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file .env up -d --remove-orphans
+    else
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d --remove-orphans
+    fi
     
     log_success "✅ Application déployée en mode développement!"
     log_info "🌐 Accès: http://localhost:8501"
@@ -124,10 +126,18 @@ deploy_prod() {
 
     # Build et démarrage avec profil production
     log_info "Construction de l'image Docker..."
-    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
+    if [ -f .env ]; then
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file .env build
+    else
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" build
+    fi
     
     log_info "Démarrage des services en mode production..."
-    $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --profile production up -d --remove-orphans
+    if [ -f .env ]; then
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --env-file .env --profile production up -d --remove-orphans
+    else
+        $COMPOSE -p "$PROJECT_NAME" -f "$COMPOSE_FILE" --profile production up -d --remove-orphans
+    fi
     
     log_success "✅ Application déployée en mode production!"
     log_info "🌐 Accès: http://localhost (ou votre domaine)"

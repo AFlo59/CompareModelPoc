@@ -55,46 +55,14 @@ def check_required_files() -> Tuple[bool, List[str]]:
 
 
 def check_env_file() -> bool:
-    """Vérifie la présence et la validité du fichier .env."""
+    """Vérifie la présence et signale l'utilisation du .env sans le modifier."""
     env_path = Path(".env")
-
-    if not env_path.exists():
-        print("⚠️  Fichier .env manquant")
-
-        # Créer .env à partir de .env.exemple si disponible
-        env_example = Path(".env.exemple")
-        if env_example.exists():
-            shutil.copy(env_example, env_path)
-            print("📝 Fichier .env créé à partir de .env.exemple")
-            print("⚠️  IMPORTANT: Configurez vos clés API dans le fichier .env")
-            return False
-        else:
-            print("❌ Aucun fichier .env.exemple trouvé pour créer .env")
-            return False
-
-    # Vérifier le contenu du .env
-    try:
-        with open(env_path, "r") as f:
-            content = f.read()
-
-        api_keys = {
-            "OPENAI_API_KEY": "sk-" in content and "OPENAI_API_KEY=" in content,
-            "ANTHROPIC_API_KEY": "anthropic" in content and "ANTHROPIC_API_KEY=" in content,
-            "DEEPSEEK_API_KEY": "DEEPSEEK_API_KEY=" in content,
-        }
-
-        configured_keys = [key for key, configured in api_keys.items() if configured]
-
-        if configured_keys:
-            print(f"✅ Clés API configurées: {', '.join(configured_keys)}")
-            return True
-        else:
-            print("⚠️  Aucune clé API configurée dans .env")
-            return False
-
-    except Exception as e:
-        print(f"❌ Erreur lecture .env: {e}")
-        return False
+    if env_path.exists():
+        print("✅ .env détecté – il sera utilisé par l'application et docker compose")
+        return True
+    else:
+        print("ℹ️ Aucun .env présent – vous pouvez en ajouter un pour vos clés API")
+        return True
 
 
 def install_dependencies() -> bool:
