@@ -77,8 +77,15 @@ def main():
         environment = "production"
 
     compose = get_compose_command()
+    # Utiliser le bon chemin vers docker-compose.yml dans le dossier docker/
     compose_file = "docker/docker-compose.yml"
     project_name = f"comparemodelpoc_{environment}"
+
+    # Vérifier que le fichier docker-compose.yml existe
+    if not Path(compose_file).exists():
+        print(f"❌ Fichier {compose_file} introuvable!")
+        print("💡 Assurez-vous que le fichier docker-compose.yml est dans le dossier docker/")
+        sys.exit(1)
 
     # down -v
     print("\n🧹 Stopping containers and removing volumes (down -v)...")
@@ -101,6 +108,9 @@ def main():
     if Path(".env").exists():
         env_file_arg = "--env-file .env"
         print("✅ Using .env for compose")
+    else:
+        print("⚠️  Fichier .env non trouvé à la racine du projet")
+
     run(f"{compose} -p {project_name} -f {compose_file} {env_file_arg} build --no-cache")
 
     # up forcé
