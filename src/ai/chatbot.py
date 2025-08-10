@@ -255,6 +255,28 @@ def launch_chat_interface_optimized(user_id: int) -> None:
                     st.session_state["auto_start_intro"] = False
                 except Exception:
                     pass
+            # Si l'historique initial n'a pas été persisté (changement de page rapide), persister en tâche de fond
+            try:
+                from src.data.models import get_campaign_messages
+
+                messages = get_campaign_messages(user_id, campaign_id, 2)
+                if not messages:
+                    # Reconstituer les deux premiers messages si absents
+                    store_message_optimized(
+                        user_id,
+                        "system",
+                        "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène.",
+                        campaign_id,
+                    )
+                    # Reprendre le dernier user prompt d'intro depuis le state si possible
+                    try:
+                        intro_msg = next((m["content"] for m in st.session_state.history if m["role"] == "user"), None)
+                    except Exception:
+                        intro_msg = None
+                    if intro_msg:
+                        store_message_optimized(user_id, "user", intro_msg, campaign_id)
+            except Exception:
+                pass
         else:
             # Afficher et stocker le message utilisateur saisi
             with st.chat_message("user"):

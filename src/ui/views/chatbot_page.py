@@ -142,10 +142,24 @@ def show_chatbot_page() -> None:
                 """,
                     unsafe_allow_html=True,
                 )
-                if bool(str(camp.get("gm_portrait", "")).strip()):
-                    st.image(camp["gm_portrait"], width=150, caption="🧙‍♂️ Maître du Jeu")
+                # Affichage cohérent du portrait MJ
+                gm_portrait = camp.get("gm_portrait")
+                if gm_portrait and str(gm_portrait).strip() and gm_portrait != "None":
+                    try:
+                        st.image(gm_portrait, width=150, caption="🧙‍♂️ Maître du Jeu")
+                    except Exception:
+                        # Fallback si l'URL est invalide
+                        st.image(
+                            "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                            width=120,
+                            caption="🧙‍♂️ Maître du Jeu (placeholder)",
+                        )
                 else:
-                    st.image("https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128", width=120)
+                    st.image(
+                        "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                        width=120,
+                        caption="🧙‍♂️ Maître du Jeu (placeholder)",
+                    )
             else:
                 st.warning("⚠️ Aucune campagne sélectionnée")
 
@@ -169,14 +183,68 @@ def show_chatbot_page() -> None:
                 """,
                     unsafe_allow_html=True,
                 )
-                if bool(str(char.get("portrait_url", "")).strip()):
-                    st.image(char["portrait_url"], width=150, caption=f"🧙‍♂️ {char['name']}")
+                # Affichage cohérent du portrait personnage
+                char_portrait = char.get("portrait_url")
+                if char_portrait and str(char_portrait).strip() and char_portrait != "None":
+                    try:
+                        st.image(char_portrait, width=150, caption=f"🎭 {char['name']}")
+                    except Exception:
+                        # Fallback si l'URL est invalide
+                        st.image(
+                            f"https://api.dicebear.com/7.x/adventurer/png?seed={char['name']}&size=128",
+                            width=120,
+                            caption=f"🎭 {char['name']} (placeholder)",
+                        )
                 else:
-                    st.image(f"https://api.dicebear.com/7.x/adventurer/png?seed={char['name']}&size=128", width=120)
+                    st.image(
+                        f"https://api.dicebear.com/7.x/adventurer/png?seed={char['name']}&size=128",
+                        width=120,
+                        caption=f"🎭 {char['name']} (placeholder)",
+                    )
             else:
                 st.warning("⚠️ Aucun personnage sélectionné")
 
         st.divider()
+
+        # Génération différée du portrait si marqué en attente (background-like)
+        try:
+            pending = st.session_state.get("pending_portrait")
+            if pending:
+                with st.spinner("🎨 Génération du portrait en arrière-plan..."):
+                    import time
+
+                    from src.ai.portraits import generate_portrait_with_meta
+                    from src.analytics.performance import store_performance
+                    from src.data.models import update_character_portrait
+
+                    start = time.time()
+                    desc = (
+                        f"Personnage : {pending['name']}\nRace : {pending['race']}\nClasse : {pending['char_class']}\n"
+                        f"Niveau : {pending['level']}\nGenre : {pending['gender']}\nContexte : {pending['campaign_context']}\n"
+                        f"Style : {pending['style']}\nExpression : {pending['mood']}\n"
+                    )
+                    url, used_model = generate_portrait_with_meta(name=pending["name"], description=desc)
+                    latency = time.time() - start
+                    if url:
+                        try:
+                            update_character_portrait(pending["character_id"], url)
+                        except Exception:
+                            pass
+                    try:
+                        store_performance(
+                            st.session_state.user["id"],
+                            used_model or "image-gen",
+                            latency,
+                            0,
+                            0,
+                            pending["campaign_id"],
+                        )
+                    except Exception:
+                        pass
+                # Nettoyer l'état après génération
+                del st.session_state["pending_portrait"]
+        except Exception:
+            pass
 
         # Interface de chat principale sous les cartes (input doit rester en bas)
         launch_chat_interface(st.session_state.user["id"])

@@ -15,10 +15,13 @@ logger = logging.getLogger(__name__)
 class PortraitGenerator:
     """Générateur de portraits avec gestion d'erreurs améliorée."""
 
-    # Paramètres par défaut images (sans 'quality' pour éviter les doublons)
-    DEFAULT_CONFIG = {"size": "1024x1024", "n": 1}
-    PRIMARY_IMAGE_MODEL = "gpt-image-1"  # tentative prioritaire
-    FALLBACK_IMAGE_MODEL = "dall-e-3"  # fallback si échec de la primaire
+    # Paramètres par défaut images (éviter les champs non supportés)
+    # Nota: certains endpoints d'images n'acceptent pas 'n' → on le retire
+    DEFAULT_CONFIG = {"size": "1024x1024"}
+    PRIMARY_IMAGE_MODEL = "gpt-image-1"  # tentative prioritaire (surchargeable via env PORTRAIT_PRIMARY_IMAGE_MODEL)
+    FALLBACK_IMAGE_MODEL = "dall-e-3"  # fallback si échec de la primaire (surchargeable via env PORTRAIT_FALLBACK_IMAGE_MODEL)
+    # Drapeau runtime: si quota/429 détecté sur gpt-image-1, on évite de le retenter pendant la session
+    _primary_disabled_due_to_quota: bool = False
 
     @staticmethod
     def _build_prompt(name: str, description: Optional[str] = None, character_type: str = "personnage") -> str:
@@ -40,6 +43,28 @@ class PortraitGenerator:
         ]
 
         return f"{base_prompt}, {', '.join(style_additions)}"
+
+    @classmethod
+    def _get_primary_model(cls) -> str:
+        return os.getenv("PORTRAIT_PRIMARY_IMAGE_MODEL", cls.PRIMARY_IMAGE_MODEL)
+
+    @classmethod
+    def _get_fallback_model(cls) -> str:
+        return os.getenv("PORTRAIT_FALLBACK_IMAGE_MODEL", cls.FALLBACK_IMAGE_MODEL)
+
+    @staticmethod
+    def _is_quota_error(error: Exception) -> bool:
+        message = str(error).lower()
+        return any(
+            sig in message
+            for sig in (
+                "insufficient_quota",
+                "too many requests",
+                "429",
+                "billing_hard_limit_reached",
+                "billing",
+            )
+        )
 
     @classmethod
     def generate_character_portrait(cls, name: str, description: Optional[str] = None) -> Optional[str]:
@@ -106,23 +131,48 @@ class PortraitGenerator:
             if client is None:
                 logger.warning("[Portraits] Client OpenAI indisponible – fallback/placeholder")
                 return cls._fallback_or_none(name)
-            # 1) tentative via modèle gpt-image-1 (quality=high)
-            try:
-                response = client.images.generate(
-                    prompt=prompt, model=cls.PRIMARY_IMAGE_MODEL, quality="high", **cls.DEFAULT_CONFIG
-                )
-                image_url = response.data[0].url
-                logger.info("[Portraits] Succès gpt-image-1")
-                return image_url
-            except Exception as primary_err:
-                logger.warning(f"[Portraits] Échec gpt-image-1: {primary_err}")
-                # 2) fallback DALL·E 3 (quality=standard)
-                response = client.images.generate(
-                    prompt=prompt, model=cls.FALLBACK_IMAGE_MODEL, quality="standard", **cls.DEFAULT_CONFIG
-                )
-                image_url = response.data[0].url
-                logger.info("[Portraits] Succès dall-e-3")
-                return image_url
+            # Déterminer si on préfère DALL·E (force env) ou si on a désactivé gpt-image-1 pour la session
+            prefer_dalle = (
+                os.getenv("PORTRAIT_FORCE_DALLE", "").lower() in ("1", "true", "on", "yes")
+                or cls._primary_disabled_due_to_quota
+            )
+            primary_model = cls._get_primary_model()
+            fallback_model = cls._get_fallback_model()
+
+            if prefer_dalle:
+                # Tenter d'abord DALL·E 3
+                try:
+                    response = client.images.generate(prompt=prompt, model=fallback_model, **cls.DEFAULT_CONFIG)
+                    image_url = response.data[0].url
+                    logger.info("[Portraits] Succès dall-e-3 (prioritaire)")
+                    return image_url
+                except Exception as dalle_err:
+                    logger.warning(f"[Portraits] Échec dall-e-3 prioritaire: {dalle_err}")
+                    # En dernier, tenter gpt-image-1 si pas explicitement désactivé par quota
+                    if not cls._primary_disabled_due_to_quota:
+                        response = client.images.generate(
+                            prompt=prompt, model=primary_model, quality="high", **cls.DEFAULT_CONFIG
+                        )
+                        image_url = response.data[0].url
+                        logger.info("[Portraits] Succès gpt-image-1 (après dalle)")
+                        return image_url
+            else:
+                # 1) tentative via modèle gpt-image-1 (quality=high)
+                try:
+                    response = client.images.generate(prompt=prompt, model=primary_model, quality="high", **cls.DEFAULT_CONFIG)
+                    image_url = response.data[0].url
+                    logger.info("[Portraits] Succès gpt-image-1")
+                    return image_url
+                except Exception as primary_err:
+                    logger.warning(f"[Portraits] Échec gpt-image-1: {primary_err}")
+                    # Si l'erreur est un quota/429, désactiver gpt-image-1 pour le reste de la session
+                    if cls._is_quota_error(primary_err):
+                        cls._primary_disabled_due_to_quota = True
+                    # 2) fallback DALL·E 3 (quality=standard)
+                    response = client.images.generate(prompt=prompt, model=fallback_model, **cls.DEFAULT_CONFIG)
+                    image_url = response.data[0].url
+                    logger.info("[Portraits] Succès dall-e-3")
+                    return image_url
 
         except ValueError as e:
             # Erreur de configuration (clé API manquante)
@@ -132,28 +182,11 @@ class PortraitGenerator:
         except Exception as e:
             # Autres erreurs (API, réseau, etc.) après tentative primaire + DALL·E
             logger.error(f"Erreur lors de la génération du portrait pour '{name}': {e}")
-            message = str(e).lower()
-
-            # Mode strict: placeholder toujours en DERNIER RECOURS si les deux modèles échouent
-            # Activez via PORTRAIT_STRICT_LAST_RESORT=true
+            # Par défaut: utiliser UNIQUEMENT le fallback contrôlé par env; le placeholder n'est qu'en dernier recours explicite
             strict_last_resort = os.getenv("PORTRAIT_STRICT_LAST_RESORT", "").lower() in ("1", "true", "on", "yes")
-
-            # Heuristique par défaut: placeholder si quota/limite, sinon fallback contrôlé par env
-            quota_signals = (
-                "insufficient_quota",
-                "too many requests",
-                "429",
-                "billing_hard_limit_reached",
-                "billing",
-            )
-
             if strict_last_resort:
                 logger.warning("[Portraits] Strict last resort activé → placeholder")
                 return cls._placeholder_portrait_url(name)
-
-            if any(sig in message for sig in quota_signals):
-                return cls._placeholder_portrait_url(name)
-
             return cls._fallback_or_none(name)
 
     @staticmethod
@@ -191,9 +224,8 @@ class PortraitGenerator:
                 )
                 return resp.data[0].url, cls.PRIMARY_IMAGE_MODEL
             except Exception:
-                resp = client.images.generate(
-                    prompt=prompt, model=cls.FALLBACK_IMAGE_MODEL, quality="standard", **cls.DEFAULT_CONFIG
-                )
+                # DALL-E 3 ne supporte pas quality="standard" - utiliser DEFAULT_CONFIG sans quality
+                resp = client.images.generate(prompt=prompt, model=cls.FALLBACK_IMAGE_MODEL, **cls.DEFAULT_CONFIG)
                 return resp.data[0].url, cls.FALLBACK_IMAGE_MODEL
         except Exception as e:
             msg = str(e).lower()

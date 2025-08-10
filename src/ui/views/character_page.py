@@ -280,66 +280,28 @@ def show_character_page() -> None:
 
                         st.success(f"✅ Personnage '{character_name}' créé avec succès !")
 
-                        # Générer le portrait du personnage
+                        # Génération différée du portrait pour éviter un mix d'écrans
                         try:
-                            st.info("🎨 Génération du portrait en cours...")
-
-                            # Préparer le prompt pour le portrait
+                            # Préparer les paramètres et marquer la génération comme en attente
                             campaign_context = ""
                             if selected_campaign:
                                 themes = ", ".join(selected_campaign.get("themes", []))
                                 campaign_context = f"dans un univers {themes}"
 
-                            portrait_prompt = f"""
-                            Personnage : {character_name}
-                            Race : {character_race}
-                            Classe : {character_class}
-                            Niveau : {character_level}
-                            Genre : {gender}
-                            Contexte : {campaign_context}
-                            Description : {character_description}
-                            Style : {art_style}
-                            Expression : {portrait_mood}
-                            """
-
-                            import time
-
-                            start = time.time()
-                            from src.ai.portraits import generate_portrait_with_meta
-
-                            portrait_url, used_model = generate_portrait_with_meta(
-                                name=character_name, description=portrait_prompt
-                            )
-                            latency = time.time() - start
-
-                            if portrait_url:
-                                # Mettre à jour le personnage avec le portrait
-                                if update_character_portrait(character_id, portrait_url):
-                                    st.success("🎨 Portrait généré et sauvegardé avec succès !")
-                                    st.image(portrait_url, width=200, caption=f"Portrait de {character_name}")
-                                else:
-                                    st.warning("🎨 Portrait généré mais erreur de sauvegarde")
-                                    st.image(portrait_url, width=200, caption=f"Portrait de {character_name}")
-                            else:
-                                st.warning("⚠️ Impossible de générer le portrait, mais le personnage est créé.")
-
-                        except Exception as e:
-                            st.warning(f"⚠️ Erreur lors de la génération du portrait : {e}")
-                            st.info("💡 Le personnage est créé, vous pourrez générer le portrait plus tard.")
-                        finally:
-                            try:
-                                # Traquer la génération d'image personnage
-                                PerformanceManager.store_performance(
-                                    user_id=user_id,
-                                    model=used_model or "image-gen",
-                                    latency=latency if "latency" in locals() else 0.0,
-                                    tokens_in=0,
-                                    tokens_out=0,
-                                    campaign_id=selected_campaign_id,
-                                    cost_estimate=None,
-                                )
-                            except Exception:
-                                pass
+                            st.session_state.pending_portrait = {
+                                "character_id": character_id,
+                                "name": character_name,
+                                "race": character_race,
+                                "char_class": character_class,
+                                "level": character_level,
+                                "gender": gender,
+                                "campaign_context": campaign_context,
+                                "style": art_style,
+                                "mood": portrait_mood,
+                                "campaign_id": selected_campaign_id,
+                            }
+                        except Exception:
+                            pass
 
                         # Redirection vers le chatbot + initialisation état
                         st.success("🎮 **Prêt à jouer !** Redirection vers le chat...")
@@ -358,7 +320,8 @@ def show_character_page() -> None:
                             "race": character_race,
                             "level": character_level,
                             "gender": gender,
-                            "portrait_url": portrait_url if "portrait_url" in locals() else None,
+                            # Portrait sera rempli par la génération différée si disponible
+                            "portrait_url": None,
                         }
                         try:
                             st.session_state.character = character_obj
@@ -410,6 +373,19 @@ def show_character_page() -> None:
                                     ]
                                 except Exception:
                                     pass
+
+                            # Persister immédiatement l'init (hidden) pour éviter toute perte si l'utilisateur change de page
+                            try:
+                                from src.ai.chatbot import store_message_optimized
+
+                                system_content = (
+                                    "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène."
+                                )
+                                store_message_optimized(user_id, "system", system_content, selected_campaign_id)
+                                store_message_optimized(user_id, "user", intro, selected_campaign_id)
+                            except Exception:
+                                # Ne pas bloquer l'UX si la persistance échoue
+                                pass
 
                             # Indiquer au chatbot de générer automatiquement la réponse d'introduction
                             try:

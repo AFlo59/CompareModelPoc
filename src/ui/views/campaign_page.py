@@ -183,7 +183,15 @@ def show_campaign_page() -> None:
 
                             if gm_portrait_url:
                                 st.success("🎨 Portrait du Maître de Jeu généré !")
-                                st.image(gm_portrait_url, width=200, caption="Votre Maître de Jeu")
+                                try:
+                                    st.image(gm_portrait_url, width=200, caption="Votre Maître de Jeu")
+                                except Exception:
+                                    # Fallback si l'URL est invalide
+                                    st.image(
+                                        "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                                        width=200,
+                                        caption="Votre Maître de Jeu (placeholder)",
+                                    )
 
                                 # Sauvegarder l'URL du portrait dans la campagne
                                 if update_campaign_portrait(campaign_id, gm_portrait_url):
@@ -192,6 +200,12 @@ def show_campaign_page() -> None:
                                     st.warning("⚠️ Portrait généré mais erreur de sauvegarde")
                             else:
                                 st.warning("⚠️ Impossible de générer le portrait du MJ (clé API manquante?)")
+                                # Afficher un placeholder
+                                st.image(
+                                    "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                                    width=200,
+                                    caption="Maître de Jeu (placeholder)",
+                                )
 
                         except Exception as e:
                             st.warning(f"⚠️ Erreur lors de la génération du portrait du MJ : {e}")
