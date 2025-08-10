@@ -18,23 +18,23 @@ class PortraitGenerator:
     # Paramètres par défaut images (éviter les champs non supportés)
     # Nota: certains endpoints d'images n'acceptent pas 'n' → on le retire
     DEFAULT_CONFIG = {"size": "1024x1024"}
-    
+
     # Priorité des modèles selon votre demande :
     # 1. gen-image-1 (limité par quota) - primaire
-    # 2. dall-e-3 - secondaire  
+    # 2. dall-e-3 - secondaire
     # 3. dall-e-2 - tertiaire
     # 4. template URL - fallback final
     PRIMARY_IMAGE_MODEL = "gen-image-1"  # modèle primaire (limité par quota)
-    SECONDARY_IMAGE_MODEL = "dall-e-3"   # modèle secondaire
-    TERTIARY_IMAGE_MODEL = "dall-e-2"    # modèle tertiaire
-    
+    SECONDARY_IMAGE_MODEL = "dall-e-3"  # modèle secondaire
+    TERTIARY_IMAGE_MODEL = "dall-e-2"  # modèle tertiaire
+
     # Configurations spécifiques par modèle pour éviter les erreurs 400
     MODEL_CONFIGS = {
         "gen-image-1": {"size": "1024x1024", "quality": "high"},  # gen-image-1: quality=high supporté
         "dall-e-3": {"size": "1024x1024", "quality": "standard"},  # DALL-E 3: quality=standard uniquement
         "dall-e-2": {"size": "1024x1024"},  # DALL-E 2: pas de paramètre quality
     }
-    
+
     # Drapeau runtime: si quota/429 détecté sur gen-image-1, on évite de le retenter pendant la session
     _primary_disabled_due_to_quota: bool = False
 
@@ -65,7 +65,9 @@ class PortraitGenerator:
 
     @classmethod
     def _get_fallback_model(cls) -> str:
-        return os.getenv("PORTRAIT_FALLBACK_IMAGE_MODEL", cls.SECONDARY_IMAGE_MODEL) # Changed from TERTIARY_IMAGE_MODEL to SECONDARY_IMAGE_MODEL
+        return os.getenv(
+            "PORTRAIT_FALLBACK_IMAGE_MODEL", cls.SECONDARY_IMAGE_MODEL
+        )  # Changed from TERTIARY_IMAGE_MODEL to SECONDARY_IMAGE_MODEL
 
     @staticmethod
     def _is_quota_error(error: Exception) -> bool:
@@ -231,7 +233,7 @@ class PortraitGenerator:
             client = get_openai_client()
             if client is None:
                 return cls._fallback_or_none(name), None
-            
+
             # 1) Tentative via gen-image-1
             if not cls._primary_disabled_due_to_quota:
                 try:
@@ -241,7 +243,7 @@ class PortraitGenerator:
                 except Exception as primary_err:
                     if cls._is_quota_error(primary_err):
                         cls._primary_disabled_due_to_quota = True
-            
+
             # 2) Fallback vers dall-e-3
             try:
                 dalle3_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -249,7 +251,7 @@ class PortraitGenerator:
                 return resp.data[0].url, cls.SECONDARY_IMAGE_MODEL
             except Exception:
                 pass
-            
+
             # 3) Fallback vers dall-e-2
             try:
                 dalle2_config = cls.MODEL_CONFIGS.get(cls.TERTIARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -257,10 +259,10 @@ class PortraitGenerator:
                 return resp.data[0].url, cls.TERTIARY_IMAGE_MODEL
             except Exception:
                 pass
-            
+
             # 4) Tous les modèles ont échoué
             return cls._placeholder_portrait_url(name), None
-            
+
         except Exception as e:
             msg = str(e).lower()
             if any(
@@ -306,7 +308,7 @@ class PortraitGenerator:
             client = get_openai_client()
             if client is None:
                 return cls._fallback_or_none(name), None
-            
+
             # 1) Tentative via gen-image-1
             if not cls._primary_disabled_due_to_quota:
                 try:
@@ -316,7 +318,7 @@ class PortraitGenerator:
                 except Exception as primary_err:
                     if cls._is_quota_error(primary_err):
                         cls._primary_disabled_due_to_quota = True
-            
+
             # 2) Fallback vers dall-e-3
             try:
                 dalle3_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -324,7 +326,7 @@ class PortraitGenerator:
                 return resp.data[0].url, cls.SECONDARY_IMAGE_MODEL
             except Exception:
                 pass
-            
+
             # 3) Fallback vers dall-e-2
             try:
                 dalle2_config = cls.MODEL_CONFIGS.get(cls.TERTIARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -332,10 +334,10 @@ class PortraitGenerator:
                 return resp.data[0].url, cls.TERTIARY_IMAGE_MODEL
             except Exception:
                 pass
-            
+
             # 4) Tous les modèles ont échoué
             return cls._placeholder_portrait_url(name), None
-            
+
         except Exception as e:
             msg = str(e).lower()
             if any(

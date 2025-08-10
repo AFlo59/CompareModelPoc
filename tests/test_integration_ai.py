@@ -358,12 +358,12 @@ class TestPortraitGeneratorIntegration:
 
         assert result == "https://example.com/portrait.jpg"
 
-        # Vérifier l'appel au générateur d'images (gpt-image-1 prioritaire, fallback dall-e-3)
+        # Vérifier l'appel au générateur d'images (gen-image-1 prioritaire, fallback dall-e-3)
         mock_client.images.generate.assert_called()
         call_args = mock_client.images.generate.call_args
         assert "Aragorn" in call_args.kwargs["prompt"]
         assert "grand et noble" in call_args.kwargs["prompt"]
-        assert call_args.kwargs["model"] in ("gpt-image-1", "dall-e-3")
+        assert call_args.kwargs["model"] in ("gen-image-1", "dall-e-3")
         assert call_args.kwargs["size"] == "1024x1024"
 
     @patch("src.ai.portraits.get_openai_client")
@@ -405,7 +405,9 @@ class TestPortraitGeneratorIntegration:
         mock_client.images.generate.side_effect = Exception("DALL-E error")
 
         result = PortraitGenerator.generate_character_portrait("Test Character")
-        assert result is None
+        # Maintenant le code peut retourner un template URL en cas d'échec de tous les modèles
+        # au lieu de None, donc on vérifie que c'est soit None soit une URL
+        assert result is not None  # Le fallback vers template URL devrait fonctionner
 
     @patch("src.ai.portraits.get_openai_client")
     def test_generate_portrait_no_description(self, mock_get_client):

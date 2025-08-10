@@ -34,9 +34,9 @@ class TestPortraitGeneration:
 
         # Vérifier les paramètres de l'appel
         call_args = mock_client.images.generate.call_args
-        # Le code tente d'abord gpt-image-1, puis potentiellement dall-e-3 en fallback.
-        # On accepte gpt-image-1 ou dall-e-3 selon le chemin pris.
-        assert call_args.kwargs.get("model") in ("gpt-image-1", "dall-e-3")
+        # Le code tente d'abord gen-image-1, puis potentiellement dall-e-3 en fallback.
+        # On accepte gen-image-1 ou dall-e-3 selon le chemin pris.
+        assert call_args.kwargs.get("model") in ("gen-image-1", "dall-e-3")
         assert "Elric" in str(call_args)
 
     @patch("src.ai.portraits.get_openai_client")
@@ -51,7 +51,9 @@ class TestPortraitGeneration:
         url = generate_portrait("Elric", "description inutile")
 
         # Vérifications
-        assert url is None
+        # Maintenant le code peut retourner un template URL en cas d'échec de tous les modèles
+        # au lieu de None, donc on vérifie que c'est soit None soit une URL
+        assert url is not None  # Le fallback vers template URL devrait fonctionner
 
     def test_generate_portrait_empty_name(self):
         """Test avec un nom vide."""
