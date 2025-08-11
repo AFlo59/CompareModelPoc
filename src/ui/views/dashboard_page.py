@@ -65,7 +65,7 @@ def show_dashboard_page() -> None:
                     try:
                         messages = get_campaign_messages(st.session_state.user["id"], camp["id"])
                         st.session_state.history = messages
-                    except:
+                    except Exception:
                         st.session_state.history = []
                     st.session_state.page = "chatbot"
                     st.rerun()

@@ -181,8 +181,8 @@ def store_performance_optimized(
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """INSERT INTO performance_logs 
-                   (user_id, model, latency, tokens_in, tokens_out, campaign_id) 
+                """INSERT INTO performance_logs
+                   (user_id, model, latency, tokens_in, tokens_out, campaign_id)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (user_id, model, latency, tokens_in, tokens_out, campaign_id),
             )
@@ -306,7 +306,7 @@ def launch_chat_interface_optimized(user_id: int) -> None:
                 reply = f"❌ **Erreur technique :** {str(e)}\n\nVeuillez réessayer ou changer de modèle."
                 logger.error(f"Erreur ChatbotError: {e}")
             except Exception as e:
-                reply = f"❌ **Erreur inattendue :** Une erreur s'est produite.\n\nVeuillez réessayer."
+                reply = "❌ **Erreur inattendue :** Une erreur s'est produite.\n\nVeuillez réessayer."
                 logger.error(f"Erreur inattendue dans chat: {e}")
 
         # Afficher la réponse et sauvegarder

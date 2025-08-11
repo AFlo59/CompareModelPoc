@@ -220,18 +220,18 @@ def show_system_monitoring():
         with col1:
             st.markdown(
                 f"""
-            **Système d'exploitation :** {sys_info['os']} {sys_info['os_version']}  
-            **Architecture :** {sys_info['architecture']}  
-            **Processeur :** {sys_info['processor'][:50]}...  
+            **Système d'exploitation :** {sys_info['os']} {sys_info['os_version']}
+            **Architecture :** {sys_info['architecture']}
+            **Processeur :** {sys_info['processor'][:50]}...
             """
             )
 
         with col2:
             st.markdown(
                 f"""
-            **Python :** {sys_info['python_version']}  
-            **CPU Cores :** {sys_info['cpu_count']} physiques, {sys_info['cpu_count_logical']} logiques  
-            **Démarrage :** {sys_info['boot_time'].strftime('%Y-%m-%d %H:%M:%S')}  
+            **Python :** {sys_info['python_version']}
+            **CPU Cores :** {sys_info['cpu_count']} physiques, {sys_info['cpu_count_logical']} logiques
+            **Démarrage :** {sys_info['boot_time'].strftime('%Y-%m-%d %H:%M:%S')}
             """
             )
 

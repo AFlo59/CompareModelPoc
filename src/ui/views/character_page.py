@@ -224,7 +224,7 @@ def show_character_page() -> None:
         # Description détaillée
         character_description = st.text_area(
             "📝 Description du personnage",
-            placeholder="""Décrivez votre personnage : 
+            placeholder="""Décrivez votre personnage :
 - Apparence physique (taille, corpulence, couleur des cheveux/yeux)
 - Personnalité et traits de caractère
 - Histoire personnelle et motivations

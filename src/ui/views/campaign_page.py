@@ -49,7 +49,7 @@ def show_campaign_page() -> None:
                 with col2:
                     st.write(f"**Langue :** {campaign.get('language', 'Non défini')}")
                 with col3:
-                    if st.button(f"🚀 Jouer", key=f"play_{campaign['id']}"):
+                    if st.button("🚀 Jouer", key=f"play_{campaign['id']}"):
                         st.session_state.selected_campaign = campaign["id"]
                         st.session_state.page = "chatbot"
                         st.rerun()

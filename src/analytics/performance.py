@@ -229,7 +229,7 @@ def show_ai_performance(user_id: int) -> None:
         )
 
     with col2:
-        refresh = st.button("🔄 Actualiser", use_container_width=True)
+        st.button("🔄 Actualiser", use_container_width=True)
 
     # Récupération des données
     df = get_performance_data(user_id, period)
@@ -323,11 +323,11 @@ def show_system_monitoring() -> None:
                 # Essayer '/' d'abord (Linux/Docker), puis 'C:' (Windows)
                 try:
                     disk_usage = psutil.disk_usage("/")
-                except:
+                except (OSError, FileNotFoundError):
                     disk_usage = psutil.disk_usage("C:")
                 disk_percent = (disk_usage.used / disk_usage.total) * 100
                 st.metric("💿 Disque utilisé", f"{disk_percent:.1f}%")
-            except Exception as e:
+            except Exception:
                 st.metric("💿 Disque utilisé", "N/A")
 
         st.divider()

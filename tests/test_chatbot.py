@@ -76,7 +76,7 @@ class TestChatbot:
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """SELECT model, latency, tokens_in, tokens_out, campaign_id 
+                """SELECT model, latency, tokens_in, tokens_out, campaign_id
                              FROM performance_logs WHERE user_id = ?""",
                 (user_id,),
             )
