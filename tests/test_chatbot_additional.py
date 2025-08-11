@@ -80,11 +80,17 @@ class TestChatbotAdditional:
 
         from src.ai.chatbot import launch_chat_interface
 
+        # Nettoyer et s'assurer qu'il n'y a pas de campagne
         st.session_state.clear()
+        # Le bouton est cliqué
         mock_button.return_value = True
 
         launch_chat_interface(1)
-        # Doit avoir tenté une navigation
+        # Vérifier que le bouton a été appelé
+        mock_button.assert_called_with("🏰 Choisir une campagne")
+        # Vérifier que l'erreur a été affichée
+        mock_error.assert_called_with("❌ Aucune campagne sélectionnée")
+        # Vérifier que la navigation a été définie et rerun appelé
         assert st.session_state.get("page") == "campaign_or_resume"
         mock_rerun.assert_called_once()
 
