@@ -280,31 +280,71 @@ def show_character_page() -> None:
 
                         st.success(f"✅ Personnage '{character_name}' créé avec succès !")
 
-                        # Génération différée du portrait pour éviter un mix d'écrans
+                        # Génération immédiate du portrait pour éviter un mix d'écrans
+                        portrait_url = None
                         try:
-                            # Préparer les paramètres et marquer la génération comme en attente
+                            # Préparer le contexte de campagne
                             campaign_context = ""
                             if selected_campaign:
                                 themes = ", ".join(selected_campaign.get("themes", []))
                                 campaign_context = f"dans un univers {themes}"
 
-                            st.session_state.pending_portrait = {
-                                "character_id": character_id,
-                                "name": character_name,
-                                "race": character_race,
-                                "char_class": character_class,
-                                "level": character_level,
-                                "gender": gender,
-                                "campaign_context": campaign_context,
-                                "style": art_style,
-                                "mood": portrait_mood,
-                                "campaign_id": selected_campaign_id,
-                            }
-                        except Exception:
-                            pass
+                            # Générer le portrait immédiatement avec la méthode enrichie
+                            from src.ai.portraits import PortraitGenerator
 
-                        # Redirection vers le chatbot + initialisation état
-                        st.success("🎮 **Prêt à jouer !** Redirection vers le chat...")
+                            portrait_url = PortraitGenerator.generate_character_portrait_with_save(
+                                name=character_name,
+                                character_id=character_id,
+                                race=character_race,
+                                char_class=character_class,
+                                level=character_level,
+                                gender=gender,
+                                description=character_description,
+                                art_style=art_style,
+                                mood=portrait_mood,
+                                campaign_context=campaign_context,
+                            )
+
+                            if portrait_url:
+                                if portrait_url.startswith("https://api.dicebear.com"):
+                                    st.info("🖼️ Portrait template généré (modèles IA indisponibles)")
+                                else:
+                                    st.success("🎨 Portrait IA généré avec succès !")
+                            else:
+                                st.warning("⚠️ Impossible de générer un portrait pour le moment")
+
+                        except Exception as portrait_error:
+                            import logging
+
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Erreur génération portrait: {portrait_error}")
+                            st.warning("⚠️ Portrait non généré - vous pourrez le faire plus tard")
+
+                        # Afficher le personnage créé avec son portrait
+                        st.markdown("### 🎉 Personnage créé avec succès !")
+
+                        col1, col2 = st.columns([1, 2])
+                        with col1:
+                            if portrait_url:
+                                st.image(portrait_url, width=150, caption=f"Portrait de {character_name}")
+                            else:
+                                st.write("🖼️ Pas de portrait")
+
+                        with col2:
+                            st.markdown(
+                                f"""
+                            **Nom :** {character_name}  
+                            **Race :** {character_race}  
+                            **Classe :** {character_class}  
+                            **Niveau :** {character_level}  
+                            **Genre :** {gender}  
+                            **Campagne :** {selected_campaign.get('name', 'Sans nom') if selected_campaign else 'Inconnue'}
+                            """
+                            )
+
+                        # Redirection automatique vers le chatbot avec initialisation
+                        st.info("🚀 Redirection vers l'aventure...")
+
                         # Charger la campagne complète dans le state
                         try:
                             all_camps = get_user_campaigns(user_id)
@@ -320,8 +360,8 @@ def show_character_page() -> None:
                             "race": character_race,
                             "level": character_level,
                             "gender": gender,
-                            # Portrait sera rempli par la génération différée si disponible
-                            "portrait_url": None,
+                            # Portrait sera inclus s'il a été généré
+                            "portrait_url": portrait_url,
                         }
                         try:
                             st.session_state.character = character_obj
@@ -341,20 +381,24 @@ def show_character_page() -> None:
                         except Exception:
                             pass
 
-                        # Initialiser un prompt d'ouverture si pas d'historique
+                        # Initialiser un prompt d'ouverture
+                        intro = (
+                            f"Tu es le Maître du Jeu pour la campagne '{selected_campaign['name'] if selected_campaign else ''}'. "
+                            f"Le joueur incarne {character_name}, un {character_race} {character_class} niveau {character_level}. "
+                            "Lance la scène d'ouverture."
+                        )
                         try:
-                            need_intro = ("history" not in st.session_state) or (not getattr(st.session_state, "history", []))
+                            st.session_state.history = [
+                                {
+                                    "role": "system",
+                                    "content": "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène.",
+                                },
+                                {"role": "user", "content": intro},
+                            ]
                         except Exception:
-                            need_intro = True
-
-                        if need_intro:
-                            intro = (
-                                f"Tu es le Maître du Jeu pour la campagne '{selected_campaign['name'] if selected_campaign else ''}'. "
-                                f"Le joueur incarne {character_name}, un {character_race} {character_class} niveau {character_level}. "
-                                "Lance la scène d'ouverture."
-                            )
+                            # Compat mocks
                             try:
-                                st.session_state.history = [
+                                st.session_state["history"] = [
                                     {
                                         "role": "system",
                                         "content": "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène.",
@@ -362,41 +406,36 @@ def show_character_page() -> None:
                                     {"role": "user", "content": intro},
                                 ]
                             except Exception:
-                                # Compat mocks
-                                try:
-                                    st.session_state["history"] = [
-                                        {
-                                            "role": "system",
-                                            "content": "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène.",
-                                        },
-                                        {"role": "user", "content": intro},
-                                    ]
-                                except Exception:
-                                    pass
-
-                            # Persister immédiatement l'init (hidden) pour éviter toute perte si l'utilisateur change de page
-                            try:
-                                from src.ai.chatbot import store_message_optimized
-
-                                system_content = (
-                                    "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène."
-                                )
-                                store_message_optimized(user_id, "system", system_content, selected_campaign_id)
-                                store_message_optimized(user_id, "user", intro, selected_campaign_id)
-                            except Exception:
-                                # Ne pas bloquer l'UX si la persistance échoue
                                 pass
 
-                            # Indiquer au chatbot de générer automatiquement la réponse d'introduction
-                            try:
-                                st.session_state.auto_start_intro = True
-                            except Exception:
-                                try:
-                                    st.session_state["auto_start_intro"] = True
-                                except Exception:
-                                    pass
+                        # Persister immédiatement l'initialisation
+                        try:
+                            from src.ai.chatbot import store_message_optimized
 
-                        # Redirection immédiate: éviter les états transitoires d'affichage
+                            system_content = (
+                                "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène."
+                            )
+                            store_message_optimized(user_id, "system", system_content, selected_campaign_id)
+                            store_message_optimized(user_id, "user", intro, selected_campaign_id)
+                        except Exception:
+                            # Ne pas bloquer l'UX si la persistance échoue
+                            pass
+
+                        # Indiquer au chatbot de générer automatiquement la réponse d'introduction
+                        try:
+                            st.session_state.auto_start_intro = True
+                        except Exception:
+                            try:
+                                st.session_state["auto_start_intro"] = True
+                            except Exception:
+                                pass
+
+                        # Petit délai pour que l'utilisateur voie le succès
+                        import time
+
+                        time.sleep(2)
+
+                        # Redirection automatique vers le chatbot
                         try:
                             st.session_state.page = "chatbot"
                             st.rerun()

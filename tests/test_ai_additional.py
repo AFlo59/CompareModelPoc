@@ -125,14 +125,20 @@ class TestPortraitsModule:
 
     @patch("src.ai.portraits.get_openai_client")
     def test_generate_portrait_error(self, mock_get_client):
-        """Test génération portrait - erreur."""
+        """Test génération portrait - erreur.
+
+        Avec PORTRAIT_FALLBACK=true, même en cas d'erreur API,
+        un template Dicebear est retourné en fallback.
+        """
         from src.ai.portraits import generate_portrait
 
         mock_get_client.side_effect = Exception("API Error")
 
         result = generate_portrait("Test", "Description")
 
-        assert result is None
+        # Avec le fallback activé, un template est retourné
+        assert result is not None
+        assert "dicebear.com" in result
 
     def test_generate_portrait_empty_name(self):
         """Test génération portrait - nom vide."""

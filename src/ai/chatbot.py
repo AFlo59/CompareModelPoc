@@ -379,62 +379,73 @@ def launch_chat_interface_optimized(user_id: int) -> None:
 
                 except ChatbotError as e:
                     error_message = str(e)
+                    import os
 
-                    # Gestion spécifique des erreurs de quota OpenAI
-                    if (
+                    from src.ai.models_config import get_available_alternative_models
+
+                    # Option expérimentale : basculement automatique
+                    auto_fallback = os.getenv("AI_AUTO_FALLBACK", "false").lower() == "true"
+                    available_alternatives = get_available_alternative_models(model)
+
+                    # Détection des erreurs qui justifient un fallback automatique
+                    is_quota_error = (
                         ("quota" in error_message.lower() and "dépassé" in error_message.lower())
                         or ("billing" in error_message.lower() and "limit" in error_message.lower())
                         or ("insufficient_quota" in error_message.lower())
-                    ):
-                        import os
+                    )
 
-                        from src.ai.models_config import get_available_alternative_models
+                    is_timeout_error = (
+                        "timeout" in error_message.lower()
+                        or "timed out" in error_message.lower()
+                        or "request timed out" in error_message.lower()
+                    )
 
-                        available_alternatives = get_available_alternative_models(model)
+                    is_rate_limit = "rate limit" in error_message.lower() or "429" in error_message
 
-                        # Option expérimentale : basculement automatique
-                        auto_fallback = os.getenv("AI_AUTO_FALLBACK", "false").lower() == "true"
+                    # Basculement automatique pour quota, timeout, ou rate limit (si configuré)
+                    should_auto_fallback = auto_fallback and available_alternatives and (is_quota_error or is_timeout_error)
 
-                        if auto_fallback and available_alternatives:
-                            # Essayer automatiquement avec le premier modèle alternatif disponible
-                            fallback_model = available_alternatives[0]
-                            logger.info(f"Basculement automatique de {model} vers {fallback_model} (quota épuisé)")
+                    if should_auto_fallback:
+                        # Essayer automatiquement avec le premier modèle alternatif disponible
+                        fallback_model = available_alternatives[0]
+                        error_type = "quota épuisé" if is_quota_error else "timeout" if is_timeout_error else "erreur"
+                        logger.info(f"Basculement automatique de {model} vers {fallback_model} ({error_type})")
 
-                            try:
-                                # Réessayer avec le modèle alternatif
-                                ai_response = call_ai_model_optimized(fallback_model, st.session_state.history)
-                                latency = time.time() - start_time
+                        try:
+                            # Réessayer avec le modèle alternatif
+                            ai_response = call_ai_model_optimized(fallback_model, st.session_state.history)
+                            latency = time.time() - start_time
 
-                                reply = (
-                                    f"🔄 **Basculement automatique** : {model} → {fallback_model}\n\n{ai_response['content']}"
-                                )
+                            reply = f"🔄 **Basculement automatique** : {model} → {fallback_model}\n\n{ai_response['content']}"
 
-                                # Stocker les performances avec le nouveau modèle
-                                store_performance_optimized(
-                                    user_id,
-                                    fallback_model,
-                                    latency,
-                                    ai_response["tokens_in"],
-                                    ai_response["tokens_out"],
-                                    campaign_id,
-                                )
+                            # Stocker les performances avec le nouveau modèle
+                            store_performance_optimized(
+                                user_id,
+                                fallback_model,
+                                latency,
+                                ai_response["tokens_in"],
+                                ai_response["tokens_out"],
+                                campaign_id,
+                            )
 
-                                # Afficher des métriques
-                                cost = calculate_estimated_cost(
-                                    fallback_model, ai_response["tokens_in"], ai_response["tokens_out"]
-                                )
-                                st.caption(
-                                    f"⚡ {latency:.2f}s | 🎫 {ai_response['tokens_out']} tokens | 💰 ${cost:.4f} | 🔄 Modèle: {fallback_model}"
-                                )
+                            # Afficher des métriques
+                            cost = calculate_estimated_cost(
+                                fallback_model, ai_response["tokens_in"], ai_response["tokens_out"]
+                            )
+                            st.caption(
+                                f"⚡ {latency:.2f}s | 🎫 {ai_response['tokens_out']} tokens | 💰 ${cost:.4f} | 🔄 Modèle: {fallback_model}"
+                            )
 
-                                # Succès avec le modèle alternatif
-                                break
+                            # Succès avec le modèle alternatif
+                            break
 
-                            except Exception as fallback_error:
-                                logger.warning(f"Échec du basculement automatique vers {fallback_model}: {fallback_error}")
-                                # Continuer avec le message d'erreur normal
+                        except Exception as fallback_error:
+                            logger.warning(f"Échec du basculement automatique vers {fallback_model}: {fallback_error}")
+                            # Continuer avec le message d'erreur normal
 
-                        # Message d'erreur normal avec suggestions
+                    # Gestion spécifique par type d'erreur
+                    if is_quota_error:
+                        # Message d'erreur pour quota OpenAI
                         alt_text = ""
                         if available_alternatives:
                             alt_text = f"\n\n🔄 **Modèles alternatifs disponibles :**\n"
@@ -449,31 +460,55 @@ def launch_chat_interface_optimized(user_id: int) -> None:
                             alt_text = f"\n\n⚠️ **Aucun modèle alternatif configuré.** Ajoutez des clés API pour Anthropic ou DeepSeek dans votre fichier .env."
 
                         reply = (
-                            f"❌ **Quota OpenAI épuisé** ⛽\n\n"
-                            f"Votre limite de facturation OpenAI a été atteinte.\n\n"
+                            f"❌ **Quota {model} épuisé** ⛽\n\n"
+                            f"Votre limite de facturation a été atteinte.\n\n"
                             f"🔧 **Solutions possibles :**\n"
-                            f"• Vérifiez votre compte OpenAI et augmentez votre limite\n"
+                            f"• Vérifiez votre compte et augmentez votre limite\n"
                             f"• Attendez le renouvellement de votre quota mensuel{alt_text}\n\n"
                             f"💡 Votre conversation est sauvegardée et vous pourrez continuer plus tard."
                         )
-                        logger.error(f"Quota OpenAI épuisé: {e}")
+                        logger.error(f"Quota {model} épuisé: {e}")
                         error_occurred = True
                         break
-                    elif "rate limit" in error_message.lower() or "429" in error_message:
+                    elif is_timeout_error:
+                        # Message d'erreur pour timeout
+                        alt_text = ""
+                        if available_alternatives:
+                            alt_text = f"\n\n🔄 **Modèles alternatifs disponibles :**\n"
+                            for alt_model in available_alternatives[:3]:
+                                alt_config = get_model_config(alt_model)
+                                cost_comparison = alt_config.cost_per_1k_input
+                                alt_text += f"• **{alt_model}** - ${cost_comparison:.4f}/1K tokens ({alt_config.description[:40]}...)\n"
+                            alt_text += f"\n✨ **Suggestion :** Changez de modèle dans les paramètres."
+                            if not auto_fallback:
+                                alt_text += f"\n\n🔧 **Basculement automatique** : `AI_AUTO_FALLBACK=true` dans votre .env."
+
+                        reply = (
+                            f"⏱️ **Timeout {model}** \n\n"
+                            f"Le modèle met trop de temps à répondre.\n\n"
+                            f"🔧 **Solutions :**\n"
+                            f"• Réessayez avec un message plus court\n"
+                            f"• Utilisez un autre modèle plus rapide{alt_text}\n\n"
+                            f"💡 Votre conversation reste sauvegardée."
+                        )
+                        logger.error(f"Timeout {model}: {e}")
+                        error_occurred = True
+                        break
+                    elif is_rate_limit:
                         # Rate limit - retry possible
                         if retry_count < max_retries:
                             st.warning(
-                                f"⏳ Limite de débit OpenAI atteinte, nouvel essai dans quelques secondes... (tentative {retry_count + 1}/{max_retries + 1})"
+                                f"⏳ Limite de débit {model} atteinte, nouvel essai dans quelques secondes... (tentative {retry_count + 1}/{max_retries + 1})"
                             )
                             time.sleep(2**retry_count)  # Backoff exponentiel
                             retry_count += 1
                             continue
                         else:
-                            reply = f"❌ **Rate Limit OpenAI :** Trop de requêtes consécutives.\n\n💡 **Solution :** Attendez quelques minutes ou essayez un autre modèle dans les paramètres."
+                            reply = f"❌ **Rate Limit {model} :** Trop de requêtes consécutives.\n\n💡 **Solution :** Attendez quelques minutes ou essayez un autre modèle dans les paramètres."
                     else:
                         # Autres erreurs techniques
-                        reply = f"❌ **Erreur technique :** {error_message}\n\n🔄 **Vous pouvez :** Réessayer votre dernière action ou reformuler votre message."
-                    logger.error(f"Erreur ChatbotError: {e}")
+                        reply = f"❌ **Erreur technique {model} :** {error_message}\n\n🔄 **Vous pouvez :** Réessayer votre dernière action ou reformuler votre message."
+                    logger.error(f"Erreur ChatbotError {model}: {e}")
                     error_occurred = True
                     break
 
