@@ -70,8 +70,8 @@ class UserManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT id, email, created_at, last_login, is_active 
-                FROM users 
+                SELECT id, email, created_at, last_login, is_active
+                FROM users
                 WHERE id = ? AND is_active = 1
             """,
                 (user_id,),
@@ -92,8 +92,8 @@ class UserManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                UPDATE users 
-                SET last_login = CURRENT_TIMESTAMP 
+                UPDATE users
+                SET last_login = CURRENT_TIMESTAMP
                 WHERE id = ?
             """,
                 (user_id,),
@@ -144,10 +144,10 @@ class ModelChoiceManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT model 
-                FROM model_choices 
-                WHERE user_id = ? 
-                ORDER BY created_at DESC 
+                SELECT model
+                FROM model_choices
+                WHERE user_id = ?
+                ORDER BY created_at DESC
                 LIMIT 1
             """,
                 (user_id,),
@@ -200,7 +200,7 @@ class CampaignManager:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    UPDATE campaigns 
+                    UPDATE campaigns
                     SET gm_portrait = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                 """,
@@ -244,7 +244,7 @@ class CampaignManager:
             # Requête optimisée avec JOIN pour éviter les requêtes N+1
             cursor.execute(
                 """
-                SELECT 
+                SELECT
                     c.id,
                     c.name,
                     c.themes,
@@ -306,8 +306,8 @@ class CampaignManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                UPDATE campaigns 
-                SET updated_at = CURRENT_TIMESTAMP 
+                UPDATE campaigns
+                SET updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """,
                 (campaign_id,),
@@ -337,7 +337,7 @@ class CharacterManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO characters 
+                INSERT INTO characters
                 (user_id, campaign_id, name, class, race, gender, level, description, portrait_url)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -359,7 +359,7 @@ class CharacterManager:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    UPDATE characters 
+                    UPDATE characters
                     SET portrait_url = ?
                     WHERE id = ?
                 """,
@@ -511,7 +511,7 @@ class PerformanceManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO performance_logs 
+                INSERT INTO performance_logs
                 (user_id, campaign_id, model, latency, tokens_in, tokens_out, cost_estimate)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
@@ -537,7 +537,7 @@ class PerformanceManager:
             # Statistiques globales
             cursor.execute(
                 """
-                SELECT 
+                SELECT
                     model,
                     COUNT(*) as count,
                     AVG(latency) as avg_latency,
@@ -545,7 +545,7 @@ class PerformanceManager:
                     SUM(tokens_out) as total_tokens_out,
                     SUM(cost_estimate) as total_cost
                 FROM performance_logs
-                WHERE user_id = ? 
+                WHERE user_id = ?
                     AND timestamp >= datetime('now', '-' || ? || ' days')
                 GROUP BY model
                 ORDER BY count DESC

@@ -78,7 +78,7 @@ def apply_custom_css():
         .stButton > button:active {
             transform: translateY(0px);
         }
-        
+
         /* Boutons dans les pages principales */
         div[data-testid="column"] .stButton > button {
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
@@ -94,7 +94,7 @@ def apply_custom_css():
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(118, 75, 162, 0.3);
         }
-        
+
         /* Boutons de formulaire (connexion, inscription) */
         .stForm .stButton > button {
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
@@ -109,7 +109,7 @@ def apply_custom_css():
             background: linear-gradient(90deg, #764ba2 0%, #667eea 100%);
             transform: translateY(-1px);
         }
-        
+
         /* Boutons selon leur fonction */
         /* Bouton Success (vert) */
         .btn-success {
@@ -120,7 +120,7 @@ def apply_custom_css():
         .btn-success:hover {
             background: linear-gradient(90deg, #20c997 0%, #28a745 100%) !important;
         }
-        
+
         /* Bouton Danger (rouge) */
         .btn-danger {
             background: linear-gradient(90deg, #dc3545 0%, #fd7e14 100%) !important;
@@ -130,7 +130,7 @@ def apply_custom_css():
         .btn-danger:hover {
             background: linear-gradient(90deg, #fd7e14 0%, #dc3545 100%) !important;
         }
-        
+
         /* Bouton Warning (orange) */
         .btn-warning {
             background: linear-gradient(90deg, #ffc107 0%, #fd7e14 100%) !important;
@@ -140,7 +140,7 @@ def apply_custom_css():
         .btn-warning:hover {
             background: linear-gradient(90deg, #fd7e14 0%, #ffc107 100%) !important;
         }
-        
+
         /* Bouton Info (cyan) */
         .btn-info {
             background: linear-gradient(90deg, #17a2b8 0%, #6f42c1 100%) !important;
@@ -150,20 +150,20 @@ def apply_custom_css():
         .btn-info:hover {
             background: linear-gradient(90deg, #6f42c1 0%, #17a2b8 100%) !important;
         }
-        
+
         /* Style pour les cards de navigation pour qu'elles matchent le header */
         .sidebar .element-container {
             background: rgba(102, 126, 234, 0.1);
             border-radius: 8px;
             margin-bottom: 0.5rem;
         }
-        
+
         /* Amélioration de la sidebar */
         .sidebar .block-container {
             background: linear-gradient(180deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
             border-radius: 0 15px 15px 0;
         }
-        
+
         /* Style spécifique pour le bouton de déconnexion */
         button[data-testid="stBaseButton-secondary"]:has-text("🚪 Déconnexion"),
         button:contains("🚪 Déconnexion") {
@@ -171,7 +171,7 @@ def apply_custom_css():
             color: white !important;
             border: 1px solid #dc3545 !important;
         }
-        
+
         /* Cibler spécifiquement le bouton logout par sa clé */
         div[data-testid="stButton"]:has(button[key="logout"]) button {
             background: linear-gradient(90deg, #dc3545 0%, #fd7e14 100%) !important;

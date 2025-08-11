@@ -122,7 +122,7 @@ class TestAuthMissingBranches:
         with patch.object(auth, "register_user_enhanced") as r:
             auth.register_user()
             r.assert_called()
-        with patch.object(auth, "login_enhanced", return_value={"id": 1}) as l:
+        with patch.object(auth, "login_enhanced", return_value={"id": 1}) as login_mock:
             assert auth.login() == {"id": 1}
         with patch.object(auth, "require_auth_enhanced", return_value=True) as ra:
             assert auth.require_auth() is True

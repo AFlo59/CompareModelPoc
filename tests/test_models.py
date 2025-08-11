@@ -98,7 +98,7 @@ class TestDatabaseModels:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """SELECT name, class, race, description, portrait_url 
+            """SELECT name, class, race, description, portrait_url
                          FROM characters WHERE id = ?""",
             (character_id,),
         )
