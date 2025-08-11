@@ -7,6 +7,7 @@ import os
 from typing import List, Optional
 from urllib.parse import quote_plus
 
+from ..data.models import update_campaign_portrait, update_character_portrait
 from .api_client import get_openai_client
 
 logger = logging.getLogger(__name__)
@@ -15,27 +16,23 @@ logger = logging.getLogger(__name__)
 class PortraitGenerator:
     """Générateur de portraits avec gestion d'erreurs améliorée."""
 
-    # Paramètres par défaut images (éviter les champs non supportés)
-    # Nota: certains endpoints d'images n'acceptent pas 'n' → on le retire
-    DEFAULT_CONFIG = {"size": "1024x1024"}
+    # Paramètres par défaut images
+    DEFAULT_CONFIG = {"size": "1024x1024", "n": 1}
 
     # Priorité des modèles selon votre demande :
-    # 1. gen-image-1 (limité par quota) - primaire
-    # 2. dall-e-3 - secondaire
-    # 3. dall-e-2 - tertiaire
-    # 4. template URL - fallback final
-    PRIMARY_IMAGE_MODEL = "gen-image-1"  # modèle primaire (limité par quota)
-    SECONDARY_IMAGE_MODEL = "dall-e-3"  # modèle secondaire
-    TERTIARY_IMAGE_MODEL = "dall-e-2"  # modèle tertiaire
+    # 1. dall-e-3 - primaire (modèle le plus récent avec quota, équivalent "gen-image-1")
+    # 2. dall-e-2 - secondaire (fallback)
+    # 3. template URL - fallback final
+    PRIMARY_IMAGE_MODEL = "dall-e-3"  # modèle primaire (le plus récent)
+    SECONDARY_IMAGE_MODEL = "dall-e-2"  # modèle secondaire
 
     # Configurations spécifiques par modèle pour éviter les erreurs 400
     MODEL_CONFIGS = {
-        "gen-image-1": {"size": "1024x1024", "quality": "high"},  # gen-image-1: quality=high supporté
-        "dall-e-3": {"size": "1024x1024", "quality": "standard"},  # DALL-E 3: quality=standard uniquement
-        "dall-e-2": {"size": "1024x1024"},  # DALL-E 2: pas de paramètre quality
+        "dall-e-3": {"size": "1024x1024", "quality": "standard", "n": 1},  # DALL-E 3: quality=standard/hd
+        "dall-e-2": {"size": "1024x1024", "n": 1},  # DALL-E 2: pas de paramètre quality
     }
 
-    # Drapeau runtime: si quota/429 détecté sur gen-image-1, on évite de le retenter pendant la session
+    # Drapeau runtime: si quota/429 détecté sur dall-e-3, on évite de le retenter pendant la session
     _primary_disabled_due_to_quota: bool = False
 
     @staticmethod
@@ -89,6 +86,74 @@ class PortraitGenerator:
         return cls._generate_portrait(name, description, "personnage de jeu de rôle")
 
     @classmethod
+    def generate_character_portrait_with_save(
+        cls,
+        name: str,
+        character_id: int,
+        race: str,
+        char_class: str,
+        level: int = 1,
+        gender: Optional[str] = None,
+        description: Optional[str] = None,
+        art_style: str = "Fantasy Réaliste",
+        mood: str = "Neutre",
+        campaign_context: Optional[str] = None,
+    ) -> Optional[str]:
+        """Génère un portrait de personnage avec toutes les infos du formulaire et le sauvegarde en BDD."""
+
+        # Construction d'une description enrichie
+        full_description_parts = []
+
+        # Informations de base
+        full_description_parts.append(f"{race} de niveau {level}")
+        if gender:
+            full_description_parts.append(f"de genre {gender}")
+        full_description_parts.append(f"classe {char_class}")
+
+        # Description personnalisée
+        if description and description.strip():
+            full_description_parts.append(description.strip())
+
+        # Contexte de campagne
+        if campaign_context:
+            full_description_parts.append(f"dans un contexte de {campaign_context}")
+
+        # Style et mood
+        style_mapping = {
+            "Fantasy Réaliste": "style fantasy réaliste, détaillé",
+            "Anime/Manga": "style anime/manga, expressif",
+            "Art Conceptuel": "style art conceptuel, artistique",
+            "Peinture Classique": "style peinture classique, noble",
+            "Illustration Moderne": "style illustration moderne, dynamique",
+        }
+
+        mood_mapping = {
+            "Neutre": "expression neutre et équilibrée",
+            "Déterminé": "regard déterminé et volontaire",
+            "Mystérieux": "aura mystérieuse et énigmatique",
+            "Jovial": "expression joyeuse et amicale",
+            "Sombre": "expression sombre et intense",
+            "Heroïque": "posture héroïque et noble",
+            "Sage": "sagesse et sérénité dans le regard",
+        }
+
+        full_description_parts.append(style_mapping.get(art_style, "style fantasy réaliste"))
+        full_description_parts.append(mood_mapping.get(mood, "expression équilibrée"))
+
+        full_description = ", ".join(full_description_parts)
+
+        portrait_url = cls._generate_portrait(name, full_description, "personnage de jeu de rôle")
+
+        if portrait_url and not portrait_url.startswith("https://api.dicebear.com"):
+            # Sauvegarder uniquement si c'est un portrait généré par IA (pas template)
+            try:
+                update_character_portrait(character_id, portrait_url)
+                logger.info(f"Portrait personnage sauvegardé en BDD pour character_id={character_id}")
+            except Exception as e:
+                logger.error(f"Erreur sauvegarde portrait personnage: {e}")
+        return portrait_url
+
+    @classmethod
     def generate_gm_portrait(
         cls,
         campaign_theme: str = "fantasy",
@@ -128,14 +193,87 @@ class PortraitGenerator:
         return cls._generate_portrait(name, description, "maître du jeu")
 
     @classmethod
+    def generate_gm_portrait_with_save(
+        cls,
+        campaign_id: int,
+        campaign_name: str,
+        campaign_theme: str = "fantasy",
+        secondary_themes: Optional[List[str]] = None,
+        language: str = "Français",
+        ai_model: str = "GPT-4o",
+        art_style: str = "Fantasy Réaliste",
+        expression: str = "Sage",
+        campaign_description: Optional[str] = None,
+    ) -> Optional[str]:
+        """Génère un portrait de Maître du Jeu avec toutes les infos du formulaire et le sauvegarde en BDD."""
+
+        # Construction d'une description enrichie du MJ
+        gm_description_parts = []
+
+        # Informations de base
+        gm_description_parts.append(f"Maître du Jeu expérimenté pour la campagne '{campaign_name}'")
+        gm_description_parts.append(f"spécialisé dans l'univers {campaign_theme}")
+
+        # Thèmes secondaires
+        if secondary_themes and len(secondary_themes) > 0:
+            themes_str = ", ".join(secondary_themes)
+            gm_description_parts.append(f"avec expertise en {themes_str}")
+
+        # Langue et modèle IA (influence le style)
+        gm_description_parts.append(f"maîtrisant parfaitement le {language}")
+        if ai_model:
+            gm_description_parts.append(f"utilisant l'IA {ai_model}")
+
+        # Description de campagne
+        if campaign_description and campaign_description.strip():
+            gm_description_parts.append(campaign_description.strip())
+
+        # Style artistique
+        style_mapping = {
+            "Fantasy Réaliste": "style fantasy réaliste, majestueux et détaillé",
+            "Anime/Manga": "style anime/manga, expressif et charismatique",
+            "Art Conceptuel": "style art conceptuel, mystique et artistique",
+            "Peinture Classique": "style peinture classique, noble et intemporel",
+            "Illustration Moderne": "style illustration moderne, dynamique et contemporain",
+        }
+
+        # Expression/humeur du MJ
+        expression_mapping = {
+            "Neutre": "expression bienveillante et équilibrée",
+            "Déterminé": "regard déterminé et autoritaire",
+            "Mystérieux": "aura mystérieuse et énigmatique de sage",
+            "Jovial": "expression joviale et accueillante",
+            "Sombre": "expression sombre et intense de mentor",
+            "Heroïque": "posture héroïque et inspirante",
+            "Sage": "sagesse profonde et sérénité dans le regard",
+        }
+
+        gm_description_parts.append(style_mapping.get(art_style, "style fantasy réaliste"))
+        gm_description_parts.append(expression_mapping.get(expression, "sagesse et sérénité"))
+
+        full_description = ", ".join(gm_description_parts)
+
+        portrait_url = cls._generate_portrait("Maître du Jeu", full_description, "maître du jeu expérimenté")
+
+        if portrait_url and not portrait_url.startswith("https://api.dicebear.com"):
+            # Sauvegarder uniquement si c'est un portrait généré par IA (pas template)
+            try:
+                update_campaign_portrait(campaign_id, portrait_url)
+                logger.info(f"Portrait MJ sauvegardé en BDD pour campaign_id={campaign_id}")
+            except Exception as e:
+                logger.error(f"Erreur sauvegarde portrait MJ: {e}")
+        return portrait_url
+
+    @classmethod
     def _generate_portrait(
         cls, name: str, description: Optional[str] = None, character_type: str = "personnage"
     ) -> Optional[str]:
         """Génère un portrait avec gestion d'erreurs robuste.
 
-        - Utilise gen-image-1 en primaire (limité par quota)
-        - Fallback vers dall-e-3 puis dall-e-2 si échec
+        - Utilise dall-e-3 en primaire (modèle le plus récent avec quota)
+        - Fallback vers dall-e-2 si échec
         - Fallback final vers template URL si tous les modèles échouent
+        - Sauvegarde uniquement les portraits générés par IA (pas les templates)
         """
         if not name or not name.strip():
             logger.warning("Nom manquant pour la génération du portrait")
@@ -150,7 +288,7 @@ class PortraitGenerator:
                 logger.warning("[Portraits] Client OpenAI indisponible – fallback/placeholder")
                 return cls._fallback_or_none(name)
 
-            # 1) Tentative via modèle gen-image-1 (limité par quota)
+            # 1) Tentative via modèle dall-e-3 (primaire)
             if not cls._primary_disabled_due_to_quota:
                 try:
                     primary_config = cls.MODEL_CONFIGS.get(cls.PRIMARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -160,32 +298,22 @@ class PortraitGenerator:
                     return image_url
                 except Exception as primary_err:
                     logger.warning(f"[Portraits] Échec {cls.PRIMARY_IMAGE_MODEL}: {primary_err}")
-                    # Si l'erreur est un quota/429, désactiver gen-image-1 pour le reste de la session
+                    # Si l'erreur est un quota/429, désactiver dall-e-3 pour le reste de la session
                     if cls._is_quota_error(primary_err):
                         cls._primary_disabled_due_to_quota = True
                         logger.info(f"[Portraits] {cls.PRIMARY_IMAGE_MODEL} désactivé pour la session (quota dépassé)")
 
-            # 2) Fallback vers dall-e-3
+            # 2) Fallback vers dall-e-2
             try:
-                dalle3_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                response = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle3_config)
+                dalle2_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
+                response = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle2_config)
                 image_url = response.data[0].url
                 logger.info(f"[Portraits] Succès {cls.SECONDARY_IMAGE_MODEL}")
                 return image_url
-            except Exception as dalle3_err:
-                logger.warning(f"[Portraits] Échec {cls.SECONDARY_IMAGE_MODEL}: {dalle3_err}")
-
-            # 3) Fallback vers dall-e-2
-            try:
-                dalle2_config = cls.MODEL_CONFIGS.get(cls.TERTIARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                response = client.images.generate(prompt=prompt, model=cls.TERTIARY_IMAGE_MODEL, **dalle2_config)
-                image_url = response.data[0].url
-                logger.info(f"[Portraits] Succès {cls.TERTIARY_IMAGE_MODEL}")
-                return image_url
             except Exception as dalle2_err:
-                logger.warning(f"[Portraits] Échec {cls.TERTIARY_IMAGE_MODEL}: {dalle2_err}")
+                logger.warning(f"[Portraits] Échec {cls.SECONDARY_IMAGE_MODEL}: {dalle2_err}")
 
-            # 4) Tous les modèles ont échoué, utiliser le fallback template URL
+            # 3) Tous les modèles ont échoué, utiliser le fallback template URL
             logger.warning("[Portraits] Tous les modèles d'IA ont échoué, utilisation du template URL")
             return cls._placeholder_portrait_url(name)
 
@@ -234,7 +362,7 @@ class PortraitGenerator:
             if client is None:
                 return cls._fallback_or_none(name), None
 
-            # 1) Tentative via gen-image-1
+            # 1) Tentative via dall-e-3 (primaire)
             if not cls._primary_disabled_due_to_quota:
                 try:
                     primary_config = cls.MODEL_CONFIGS.get(cls.PRIMARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -244,23 +372,15 @@ class PortraitGenerator:
                     if cls._is_quota_error(primary_err):
                         cls._primary_disabled_due_to_quota = True
 
-            # 2) Fallback vers dall-e-3
+            # 2) Fallback vers dall-e-2
             try:
-                dalle3_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                resp = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle3_config)
+                dalle2_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
+                resp = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle2_config)
                 return resp.data[0].url, cls.SECONDARY_IMAGE_MODEL
             except Exception:
                 pass
 
-            # 3) Fallback vers dall-e-2
-            try:
-                dalle2_config = cls.MODEL_CONFIGS.get(cls.TERTIARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                resp = client.images.generate(prompt=prompt, model=cls.TERTIARY_IMAGE_MODEL, **dalle2_config)
-                return resp.data[0].url, cls.TERTIARY_IMAGE_MODEL
-            except Exception:
-                pass
-
-            # 4) Tous les modèles ont échoué
+            # 3) Tous les modèles ont échoué
             return cls._placeholder_portrait_url(name), None
 
         except Exception as e:
@@ -309,7 +429,7 @@ class PortraitGenerator:
             if client is None:
                 return cls._fallback_or_none(name), None
 
-            # 1) Tentative via gen-image-1
+            # 1) Tentative via dall-e-3 (primaire)
             if not cls._primary_disabled_due_to_quota:
                 try:
                     primary_config = cls.MODEL_CONFIGS.get(cls.PRIMARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
@@ -319,23 +439,15 @@ class PortraitGenerator:
                     if cls._is_quota_error(primary_err):
                         cls._primary_disabled_due_to_quota = True
 
-            # 2) Fallback vers dall-e-3
+            # 2) Fallback vers dall-e-2
             try:
-                dalle3_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                resp = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle3_config)
+                dalle2_config = cls.MODEL_CONFIGS.get(cls.SECONDARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
+                resp = client.images.generate(prompt=prompt, model=cls.SECONDARY_IMAGE_MODEL, **dalle2_config)
                 return resp.data[0].url, cls.SECONDARY_IMAGE_MODEL
             except Exception:
                 pass
 
-            # 3) Fallback vers dall-e-2
-            try:
-                dalle2_config = cls.MODEL_CONFIGS.get(cls.TERTIARY_IMAGE_MODEL, cls.DEFAULT_CONFIG)
-                resp = client.images.generate(prompt=prompt, model=cls.TERTIARY_IMAGE_MODEL, **dalle2_config)
-                return resp.data[0].url, cls.TERTIARY_IMAGE_MODEL
-            except Exception:
-                pass
-
-            # 4) Tous les modèles ont échoué
+            # 3) Tous les modèles ont échoué
             return cls._placeholder_portrait_url(name), None
 
         except Exception as e:

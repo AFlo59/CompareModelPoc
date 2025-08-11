@@ -213,27 +213,34 @@ def show_chatbot_page() -> None:
                 with st.spinner("🎨 Génération du portrait en arrière-plan..."):
                     import time
 
-                    from src.ai.portraits import generate_portrait_with_meta
+                    from src.ai.portraits import PortraitGenerator
                     from src.analytics.performance import store_performance
-                    from src.data.models import update_character_portrait
 
                     start = time.time()
-                    desc = (
-                        f"Personnage : {pending['name']}\nRace : {pending['race']}\nClasse : {pending['char_class']}\n"
-                        f"Niveau : {pending['level']}\nGenre : {pending['gender']}\nContexte : {pending['campaign_context']}\n"
-                        f"Style : {pending['style']}\nExpression : {pending['mood']}\n"
+
+                    # Utiliser la nouvelle méthode enrichie pour générer le portrait
+                    url = PortraitGenerator.generate_character_portrait_with_save(
+                        name=pending["name"],
+                        character_id=pending["character_id"],
+                        race=pending["race"],
+                        char_class=pending["char_class"],
+                        level=pending["level"],
+                        gender=pending["gender"],
+                        description=None,  # Utilise les infos automatiques
+                        art_style=pending["style"],
+                        mood=pending["mood"],
+                        campaign_context=pending["campaign_context"],
                     )
-                    url, used_model = generate_portrait_with_meta(name=pending["name"], description=desc)
+
                     latency = time.time() - start
-                    if url:
-                        try:
-                            update_character_portrait(pending["character_id"], url)
-                        except Exception:
-                            pass
+
+                    # Enregistrer les performances
                     try:
+                        # Utiliser dall-e-3 comme modèle par défaut pour les stats
+                        used_model = "dall-e-3" if url and not url.startswith("https://api.dicebear.com") else "template"
                         store_performance(
                             st.session_state.user["id"],
-                            used_model or "image-gen",
+                            used_model,
                             latency,
                             0,
                             0,
