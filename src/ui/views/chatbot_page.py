@@ -2,6 +2,8 @@
 Page du chatbot principal
 """
 
+import time
+
 import streamlit as st
 
 from src.ai.chatbot import launch_chat_interface
@@ -13,6 +15,45 @@ def show_chatbot_page() -> None:
     """Affiche la page principale du chatbot."""
     if not require_auth():
         return
+
+    # *** FORCER LA RÉACTUALISATION DES DONNÉES SI CHANGEMENT DE CAMPAGNE ***
+    user_id = st.session_state.user["id"]
+
+    # Vérifier si on a un selected_campaign mais pas de campaign en session
+    selected_campaign_id = getattr(st.session_state, "selected_campaign", None)
+    current_campaign_id = st.session_state.get("campaign", {}).get("id")
+
+    if selected_campaign_id and selected_campaign_id != current_campaign_id:
+        # Recharger la campagne depuis la base
+        try:
+            fresh_campaigns = get_user_campaigns(user_id)
+            new_campaign = next((c for c in fresh_campaigns if c.get("id") == selected_campaign_id), None)
+            if new_campaign:
+                st.session_state.campaign = new_campaign
+                # Réinitialiser l'historique pour cette nouvelle campagne
+                if "history" in st.session_state:
+                    del st.session_state["history"]
+
+                # Forcer l'initialisation pour une nouvelle campagne
+                st.session_state.force_campaign_init = True
+                st.success(f"✅ Campagne '{new_campaign.get('name', 'Inconnue')}' chargée !")
+                time.sleep(1)
+                st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erreur lors du chargement de la campagne : {e}")
+
+    # Auto-refresh si on vient de créer un personnage ou une campagne
+    if hasattr(st.session_state, "force_campaign_init") and st.session_state.force_campaign_init:
+        st.session_state.force_campaign_init = False
+        try:
+            # Recharger toutes les données
+            fresh_campaigns = get_user_campaigns(user_id)
+            if selected_campaign_id:
+                new_campaign = next((c for c in fresh_campaigns if c.get("id") == selected_campaign_id), None)
+                if new_campaign:
+                    st.session_state.campaign = new_campaign
+        except Exception:
+            pass
 
     # Déterminer la campagne et le personnage actifs (robuste: attribut ou clé dict)
     campaign = getattr(st.session_state, "campaign", None)
@@ -103,7 +144,20 @@ def show_chatbot_page() -> None:
 
                 if st.button("🔁 Changer", use_container_width=True):
                     selected_campaign = campaign_options[selected_campaign_name]
-                    st.session_state.campaign = selected_campaign
+
+                    # Forcer le changement de campagne avec nettoyage
+                    old_campaign_id = st.session_state.get("campaign", {}).get("id")
+                    if selected_campaign["id"] != old_campaign_id:
+                        st.session_state.campaign = selected_campaign
+                        st.session_state.selected_campaign = selected_campaign["id"]
+
+                        # Nettoyer l'historique pour la nouvelle campagne
+                        if "history" in st.session_state:
+                            del st.session_state["history"]
+
+                        # Forcer la réinitialisation
+                        st.success(f"🔄 Changement vers la campagne '{selected_campaign['name']}'")
+                        st.rerun()
 
                     # Charger l'historique de la campagne
                     try:
@@ -266,7 +320,7 @@ def show_chatbot_page() -> None:
         # Paramètres spécifiques au chatbot
         st.subheader("⚙️ Paramètres de Session")
 
-        # Gestion des données de session
+        # Gestion des données de session avec recovery
         st.markdown("### 🗑️ Gestion des Données")
 
         col1, col2, col3 = st.columns(3)
@@ -279,13 +333,33 @@ def show_chatbot_page() -> None:
                 st.rerun()
 
         with col2:
-            if st.button("🎭 Changer Personnage", help="Retour à la gestion des personnages", use_container_width=True):
-                st.session_state.page = "character"
+            if st.button(
+                "🔄 Récupérer Discussion", help="Recharge la dernière conversation depuis la base", use_container_width=True
+            ):
+                try:
+                    # Recharger les messages depuis la base de données
+                    campaign_id = st.session_state.get("campaign", {}).get("id")
+                    if campaign_id:
+                        messages = get_campaign_messages(st.session_state.user["id"], campaign_id, limit=50)
+                        if messages:
+                            # Convertir en format d'historique
+                            history = []
+                            for msg in messages:
+                                role = "user" if msg.get("role") == "user" else "assistant"
+                                history.append({"role": role, "content": msg.get("content", "")})
+                            st.session_state.history = history
+                            st.success(f"✅ {len(messages)} messages récupérés !")
+                        else:
+                            st.info("ℹ️ Aucune conversation précédente trouvée")
+                    else:
+                        st.warning("⚠️ Aucune campagne active")
+                except Exception as e:
+                    st.error(f"❌ Erreur lors de la récupération : {e}")
                 st.rerun()
 
         with col3:
-            if st.button("🏕️ Changer Campagne", help="Retour à la gestion des campagnes", use_container_width=True):
-                st.session_state.page = "campaign"
+            if st.button("� Changer Personnage", help="Retour à la gestion des personnages", use_container_width=True):
+                st.session_state.page = "character"
                 st.rerun()
 
         st.divider()

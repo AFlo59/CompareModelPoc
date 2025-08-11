@@ -88,6 +88,50 @@ def get_available_model_names() -> List[str]:
     return list(AVAILABLE_MODELS.keys())
 
 
+def get_alternative_models(current_model: str) -> List[str]:
+    """Retourne une liste de modèles alternatifs quand le modèle actuel a des problèmes."""
+    alternatives = []
+    current_config = get_model_config(current_model)
+
+    # Si le modèle actuel est OpenAI, suggérer des alternatives non-OpenAI
+    if current_config.provider == ModelProvider.OPENAI.value:
+        for model_name, config in AVAILABLE_MODELS.items():
+            if config.provider != ModelProvider.OPENAI.value and model_name != current_model:
+                alternatives.append(model_name)
+    else:
+        # Sinon, suggérer tous les autres modèles
+        for model_name in AVAILABLE_MODELS.keys():
+            if model_name != current_model:
+                alternatives.append(model_name)
+
+    # Trier par coût (les plus économiques en premier)
+    alternatives.sort(key=lambda x: AVAILABLE_MODELS[x].cost_per_1k_input)
+    return alternatives
+
+
+def get_available_alternative_models(current_model: str) -> List[str]:
+    """Retourne les modèles alternatifs qui ont des clés API disponibles."""
+    from src.ai.api_client import APIClientManager
+
+    api_status = APIClientManager.validate_api_keys()
+    alternatives = get_alternative_models(current_model)
+
+    available_alternatives = []
+    for model_name in alternatives:
+        config = AVAILABLE_MODELS[model_name]
+        provider = config.provider
+
+        # Vérifier si la clé API est disponible pour ce fournisseur
+        if (
+            (provider == ModelProvider.OPENAI.value and api_status["openai"])
+            or (provider == ModelProvider.ANTHROPIC.value and api_status["anthropic"])
+            or (provider == ModelProvider.DEEPSEEK.value and api_status["deepseek"])
+        ):
+            available_alternatives.append(model_name)
+
+    return available_alternatives
+
+
 def calculate_estimated_cost(model_name: str, tokens_in: int, tokens_out: int) -> float:
     """Calcule le coût estimé d'une requête."""
     config = get_model_config(model_name)

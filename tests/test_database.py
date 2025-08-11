@@ -294,12 +294,17 @@ class TestInitOptimizedDb:
 
     @patch("src.data.database.DatabaseConfig")
     @patch("src.data.database.get_optimized_connection")
+    @patch.dict("os.environ", {}, clear=False)
     def test_init_optimized_db_creates_directory(self, mock_get_conn, mock_config):
         """Test que l'initialisation crée le répertoire si nécessaire."""
         # Créer un répertoire temporaire pour le test
         with tempfile.TemporaryDirectory() as temp_dir:
             test_db_path = Path(temp_dir) / "subdir" / "test.db"
             mock_config.DB_PATH = test_db_path
+
+            # S'assurer que DATABASE_PATH n'interfère pas
+            if "DATABASE_PATH" in os.environ:
+                del os.environ["DATABASE_PATH"]
 
             # Le répertoire parent n'existe pas encore
             assert not test_db_path.parent.exists()
