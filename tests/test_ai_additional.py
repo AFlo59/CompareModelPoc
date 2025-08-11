@@ -4,8 +4,9 @@ Tests additionnels pour améliorer la couverture des modules AI
 
 import os
 import sys
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 # Ajouter le répertoire parent au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -68,7 +69,7 @@ class TestChatbotModule:
     @patch("src.ai.models_config.get_model_config")
     def test_call_ai_model_error_handling(self, mock_get_config, mock_get_client):
         """Test gestion d'erreur call_ai_model."""
-        from src.ai.chatbot import call_ai_model, ChatbotError
+        from src.ai.chatbot import ChatbotError, call_ai_model
 
         # Mock de la config du modèle
         mock_config = Mock()
@@ -141,8 +142,15 @@ class TestPortraitsModule:
 
         assert result is None
 
+    @patch.dict("os.environ", {}, clear=True)
     def test_generate_portrait_no_description(self):
-        """Test génération portrait - pas de description."""
+        """Test génération portrait - pas de description.
+
+        Avec le nouveau comportement, en cas d'erreur de quota/billing sur OpenAI,
+        le module retourne un avatar Dicebear en fallback automatique.
+        Ici on simule un environnement sans variables qui conduit à `get_openai_client()` None
+        et donc à un fallback contrôlé par PORTRAIT_FALLBACK (non défini -> None).
+        """
         from src.ai.portraits import generate_portrait
 
         result = generate_portrait("Name", "")

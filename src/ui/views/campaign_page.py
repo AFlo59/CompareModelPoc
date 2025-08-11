@@ -2,11 +2,13 @@
 Page de gestion des campagnes
 """
 
-import streamlit as st
-from src.auth.auth import require_auth
-from src.data.models import get_user_campaigns, create_campaign, update_campaign_portrait
-from src.ai.portraits import generate_gm_portrait
 from typing import List
+
+import streamlit as st
+
+from src.ai.portraits import generate_gm_portrait
+from src.auth.auth import require_auth
+from src.data.models import PerformanceManager, create_campaign, get_user_campaigns, update_campaign_portrait
 
 
 def show_campaign_page() -> None:
@@ -109,6 +111,25 @@ def show_campaign_page() -> None:
             help="Plus de détails aideront l'IA à créer une meilleure expérience",
         )
 
+        # Options avancées pour l'image du MJ (mêmes options que le portrait personnage)
+        with st.expander("🎨 Options du portrait du Maître de Jeu"):
+            gm_art_style = st.selectbox(
+                "🖼️ Style artistique du portrait (MJ)",
+                [
+                    "Fantasy Réaliste",
+                    "Anime/Manga",
+                    "Art Conceptuel",
+                    "Peinture Classique",
+                    "Illustration Moderne",
+                ],
+                help="Style pour la génération du portrait du MJ",
+            )
+            gm_expression = st.selectbox(
+                "😊 Expression/Humeur (MJ)",
+                ["Neutre", "Déterminé", "Mystérieux", "Jovial", "Sombre", "Heroïque", "Sage"],
+                help="Expression générale du MJ",
+            )
+
         # Bouton de création
         submitted = st.form_submit_button("🚀 Créer la Campagne", use_container_width=True)
 
@@ -131,6 +152,8 @@ def show_campaign_page() -> None:
                             language=language,
                             ai_model=ai_model,  # Nouveau paramètre
                         )
+                        if not campaign_id:
+                            raise ValueError("Création de campagne échouée (ID manquant)")
 
                         st.success(f"✅ Campagne '{campaign_name}' créée avec succès !")
 
@@ -140,11 +163,35 @@ def show_campaign_page() -> None:
 
                             # Préparer le thème pour le portrait
                             main_theme = primary_theme.lower()
-                            gm_portrait_url = generate_gm_portrait(campaign_theme=main_theme)
+                            import time
+
+                            start = time.time()
+                            from src.ai.portraits import generate_gm_portrait_with_meta
+
+                            gm_portrait_url, used_model = generate_gm_portrait_with_meta(
+                                campaign_theme=main_theme,
+                                campaign_name=campaign_name.strip() or None,
+                                secondary_themes=secondary_themes or None,
+                                tone=tone,
+                                language=language,
+                                model_name=ai_model,
+                                expression=gm_expression,
+                                art_style=gm_art_style,
+                                campaign_description=(description or None),
+                            )
+                            latency = time.time() - start
 
                             if gm_portrait_url:
                                 st.success("🎨 Portrait du Maître de Jeu généré !")
-                                st.image(gm_portrait_url, width=200, caption="Votre Maître de Jeu")
+                                try:
+                                    st.image(gm_portrait_url, width=200, caption="Votre Maître de Jeu")
+                                except Exception:
+                                    # Fallback si l'URL est invalide
+                                    st.image(
+                                        "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                                        width=200,
+                                        caption="Votre Maître de Jeu (placeholder)",
+                                    )
 
                                 # Sauvegarder l'URL du portrait dans la campagne
                                 if update_campaign_portrait(campaign_id, gm_portrait_url):
@@ -153,9 +200,29 @@ def show_campaign_page() -> None:
                                     st.warning("⚠️ Portrait généré mais erreur de sauvegarde")
                             else:
                                 st.warning("⚠️ Impossible de générer le portrait du MJ (clé API manquante?)")
+                                # Afficher un placeholder
+                                st.image(
+                                    "https://api.dicebear.com/7.x/adventurer/png?seed=GameMaster&size=128",
+                                    width=200,
+                                    caption="Maître de Jeu (placeholder)",
+                                )
 
                         except Exception as e:
                             st.warning(f"⚠️ Erreur lors de la génération du portrait du MJ : {e}")
+                        finally:
+                            try:
+                                # Traquer la génération d'image dans les performances (0 tokens)
+                                PerformanceManager.store_performance(
+                                    user_id=user_id,
+                                    model=used_model or "image-gen",
+                                    latency=latency if "latency" in locals() else 0.0,
+                                    tokens_in=0,
+                                    tokens_out=0,
+                                    campaign_id=campaign_id,
+                                    cost_estimate=None,
+                                )
+                            except Exception:
+                                pass
 
                         # Redirection vers la création de personnage
                         st.success("🧙‍♂️ **Prochaine étape :** Créez votre personnage !")

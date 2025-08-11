@@ -3,10 +3,9 @@ Compléments pour src.data.database lignes résiduelles (372-376, 415-416, 428-4
 """
 
 import os
+import sqlite3
 import sys
 from unittest.mock import Mock, patch
-
-import sqlite3
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -14,8 +13,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 class TestDatabaseFinalizeEdges:
     @patch("src.data.database.DatabaseConnection.get_connection")
     def test_begin_retry_then_ok(self, mock_get_conn):
-        from src.data.database import get_optimized_connection
         import sqlite3
+
+        from src.data.database import get_optimized_connection
 
         c1 = Mock()
         c1.execute.side_effect = [sqlite3.Error("bad")]

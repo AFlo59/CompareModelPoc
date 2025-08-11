@@ -4,8 +4,8 @@ Gestionnaire d'API centralisé pour tous les services IA
 
 import logging
 import os
-from typing import Optional
 from functools import lru_cache
+from typing import Optional
 
 import anthropic
 from dotenv import load_dotenv
@@ -21,6 +21,7 @@ class APIClientManager:
 
     _openai_client: Optional[OpenAI] = None
     _anthropic_client: Optional[anthropic.Anthropic] = None
+    _deepseek_client: Optional[OpenAI] = None
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -49,6 +50,23 @@ class APIClientManager:
         return cls._anthropic_client
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def get_deepseek_client(cls) -> Optional[OpenAI]:
+        """Retourne un client DeepSeek (compat OpenAI) ou None si clé manquante."""
+        if cls._deepseek_client is None:
+            api_key = os.getenv("DEEPSEEK_API_KEY")
+            if not api_key:
+                logger.warning("DEEPSEEK_API_KEY n'est pas définie dans les variables d'environnement")
+                return None
+            # Client compatible OpenAI pointant vers l'API DeepSeek
+            cls._deepseek_client = OpenAI(
+                api_key=api_key,
+                base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
+            )
+            logger.info("Client DeepSeek initialisé")
+        return cls._deepseek_client
+
+    @classmethod
     def validate_api_keys(cls) -> dict:
         """Valide toutes les clés API disponibles."""
         status = {
@@ -72,3 +90,8 @@ def get_openai_client() -> Optional[OpenAI]:
 def get_anthropic_client() -> Optional[anthropic.Anthropic]:
     """Fonction d'accès simple au client Anthropic."""
     return APIClientManager.get_anthropic_client()
+
+
+def get_deepseek_client() -> Optional[OpenAI]:
+    """Fonction d'accès simple au client DeepSeek."""
+    return APIClientManager.get_deepseek_client()

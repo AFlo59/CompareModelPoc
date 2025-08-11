@@ -4,7 +4,7 @@ Tests pour les composants d'interface utilisateur
 
 import os
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -59,7 +59,7 @@ class TestPageImports:
     def test_import_auth_page(self):
         """Test d'import de la page d'authentification."""
         try:
-            from src.ui.views.auth_page import show_auth_page, determine_user_next_page
+            from src.ui.views.auth_page import determine_user_next_page, show_auth_page
 
             assert callable(show_auth_page)
             assert callable(determine_user_next_page)
@@ -146,7 +146,7 @@ class TestAppRefactored:
     def test_import_app_refactored(self):
         """Test d'import de l'application refactorisée."""
         try:
-            from src.ui.app import main, initialize_app
+            from src.ui.app import initialize_app, main
 
             assert callable(main)
             assert callable(initialize_app)
@@ -218,7 +218,7 @@ class TestModuleStructure:
     def test_main_ui_init_file(self):
         """Test du fichier __init__.py principal UI."""
         try:
-            from src.ui import __version__, __author__
+            from src.ui import __author__, __version__
 
             assert isinstance(__version__, str)
             assert isinstance(__author__, str)

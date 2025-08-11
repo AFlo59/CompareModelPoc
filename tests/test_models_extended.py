@@ -3,22 +3,23 @@ Tests étendus pour le module data.models - améliorer la couverture
 """
 
 import os
-import sys
-import pytest
 import sqlite3
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
+import sys
 import time
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 # Ajouter le répertoire parent au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.data.models import (
-    ModelCache,
-    UserManager,
-    ModelChoiceManager,
     CampaignManager,
     CharacterManager,
+    ModelCache,
+    ModelChoiceManager,
+    UserManager,
     _model_cache,
     clear_cache,
 )
@@ -395,11 +396,11 @@ class TestCharacterManager:
         mock_get_connection.return_value.__enter__ = Mock(return_value=mock_conn)
         mock_get_connection.return_value.__exit__ = Mock(return_value=None)
 
-        # Mock des résultats - tuples correspondant aux colonnes SQL
-        # (id, name, class, race, gender, description, portrait_url, created_at)
+        # Mock des résultats - tuples correspondant aux colonnes SQL ACTUELLES
+        # (id, campaign_id, name, class, race, gender, level, description, portrait_url, created_at)
         mock_characters = [
-            (1, "Character 1", "Warrior", "Human", "Male", "Desc 1", None, "2024-01-01 00:00:00"),
-            (2, "Character 2", "Mage", "Elf", "Female", "Desc 2", None, "2024-01-02 00:00:00"),
+            (1, 10, "Character 1", "Warrior", "Human", "Male", 3, "Desc 1", None, "2024-01-01 00:00:00"),
+            (2, 11, "Character 2", "Mage", "Elf", "Female", 2, "Desc 2", None, "2024-01-02 00:00:00"),
         ]
         mock_cursor.fetchall.return_value = mock_characters
 

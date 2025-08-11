@@ -24,10 +24,10 @@ def _cols(n):
 class TestSystemMonitoring:
     @patch("src.analytics.performance.st")
     def test_system_monitoring_import_error(self, mock_st):
-        from src.analytics.performance import show_system_monitoring
-
         # Forcer ImportError via patch du builtins __import__ pour psutil
         import builtins
+
+        from src.analytics.performance import show_system_monitoring
 
         real_import = builtins.__import__
 

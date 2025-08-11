@@ -7,15 +7,15 @@ from typing import Any, Dict, Optional
 
 import streamlit as st
 
+from src.data.database import init_db
 from src.ui.components.styles import apply_custom_css, configure_page, create_styled_button
 from src.ui.views.auth_page import show_auth_page
-from src.ui.views.dashboard_page import show_dashboard_page
 from src.ui.views.campaign_page import show_campaign_page
 from src.ui.views.character_page import show_character_page
 from src.ui.views.chatbot_page import show_chatbot_page
+from src.ui.views.dashboard_page import show_dashboard_page
 from src.ui.views.performance_page import show_performance_page
 from src.ui.views.settings_page import show_settings_page
-from src.data.database import init_db
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)

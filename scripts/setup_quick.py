@@ -5,8 +5,8 @@ Script ultra-simplifié pour démarrer en 30 secondes.
 """
 
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 

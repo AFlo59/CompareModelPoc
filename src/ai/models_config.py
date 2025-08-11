@@ -3,8 +3,8 @@ Configuration des modèles IA et paramètres
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
 from enum import Enum
+from typing import Dict, List
 
 
 @dataclass

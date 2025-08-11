@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 def test_get_db_path_module_alias_preferred_when_equal():
     import importlib
+
     import src.data.database as db
 
     db = importlib.reload(db)
@@ -22,6 +23,7 @@ def test_get_db_path_module_alias_preferred_when_equal():
 
 def test_get_db_path_config_preferred_when_different():
     import importlib
+
     import src.data.database as db
 
     db = importlib.reload(db)
@@ -32,6 +34,7 @@ def test_get_db_path_config_preferred_when_different():
 
 def test_get_db_path_default_when_none():
     import importlib
+
     import src.data.database as db
 
     db = importlib.reload(db)

@@ -3,6 +3,7 @@ Page d'authentification
 """
 
 import streamlit as st
+
 from src.auth.auth import get_current_user, login, logout, register_user, require_auth
 from src.data.models import get_user_campaigns
 

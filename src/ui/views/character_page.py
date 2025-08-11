@@ -2,11 +2,19 @@
 Page de création et gestion des personnages
 """
 
-import streamlit as st
-from src.auth.auth import require_auth
-from src.data.models import get_user_characters, create_character, get_user_campaigns, update_character_portrait
-from src.ai.portraits import generate_portrait
 from typing import List, Optional
+
+import streamlit as st
+
+from src.ai.portraits import generate_portrait
+from src.auth.auth import require_auth
+from src.data.models import (
+    PerformanceManager,
+    create_character,
+    get_user_campaigns,
+    get_user_characters,
+    update_character_portrait,
+)
 
 
 def show_character_page() -> None:
@@ -45,7 +53,7 @@ def show_character_page() -> None:
 
         for character in characters:
             with st.expander(
-                f"🧙‍♂️ {character.get('name', 'Personnage sans nom')} ({character.get('char_class', 'Classe inconnue')})"
+                f"🧙‍♂️ {character.get('name', 'Personnage sans nom')} ({character.get('class', 'Classe inconnue')})"
             ):
                 col1, col2, col3, col4 = st.columns(4)
 
@@ -57,7 +65,8 @@ def show_character_page() -> None:
 
                 with col2:
                     st.write(f"**Race :** {character.get('race', 'Non définie')}")
-                    st.write(f"**Classe :** {character.get('char_class', 'Non définie')}")
+                    st.write(f"**Classe :** {character.get('class', 'Non définie')}")
+                    st.write(f"**Niveau :** {character.get('level', 1)}")
 
                 with col3:
                     campaign_id = character.get("campaign_id")
@@ -197,10 +206,20 @@ def show_character_page() -> None:
                 ],
                 help="La classe de votre personnage",
             )
-
-            character_level = st.number_input(
-                "📊 Niveau", min_value=1, max_value=20, value=1, help="Le niveau de départ de votre personnage"
-            )
+            # Niveau fixé à 1 par défaut (non modifiable)
+            character_level = 1
+            try:
+                st.number_input(
+                    "📊 Niveau",
+                    min_value=1,
+                    max_value=20,
+                    value=1,
+                    help="Le niveau de départ de votre personnage",
+                    disabled=True,
+                )
+            except Exception:
+                # Sur certaines versions de Streamlit sans 'disabled', on affiche juste l'info
+                st.caption("📊 Niveau: 1 (par défaut)")
 
         # Description détaillée
         character_description = st.text_area(
@@ -215,7 +234,14 @@ def show_character_page() -> None:
             help="Plus de détails = meilleur portrait généré par l'IA",
         )
 
-        # Options avancées
+        # Genre et options avancées
+        # Genre: fait partie du profil personnage (pas une option d'image)
+        gender = st.selectbox(
+            "⚧ Genre",
+            ["Homme", "Femme"],
+            help="Genre du personnage",
+        )
+
         with st.expander("🎨 Options avancées de génération"):
             art_style = st.selectbox(
                 "🖼️ Style artistique du portrait",
@@ -254,50 +280,33 @@ def show_character_page() -> None:
 
                         st.success(f"✅ Personnage '{character_name}' créé avec succès !")
 
-                        # Générer le portrait du personnage
+                        # Génération différée du portrait pour éviter un mix d'écrans
                         try:
-                            st.info("🎨 Génération du portrait en cours...")
-
-                            # Préparer le prompt pour le portrait
+                            # Préparer les paramètres et marquer la génération comme en attente
                             campaign_context = ""
                             if selected_campaign:
                                 themes = ", ".join(selected_campaign.get("themes", []))
                                 campaign_context = f"dans un univers {themes}"
 
-                            portrait_prompt = f"""
-                            Personnage : {character_name}
-                            Race : {character_race}
-                            Classe : {character_class}
-                            Niveau : {character_level}
-                            Contexte : {campaign_context}
-                            Description : {character_description}
-                            Style : {art_style}
-                            Expression : {portrait_mood}
-                            """
-
-                            portrait_url = generate_portrait(name=character_name, description=portrait_prompt)
-
-                            if portrait_url:
-                                # Mettre à jour le personnage avec le portrait
-                                if update_character_portrait(character_id, portrait_url):
-                                    st.success("🎨 Portrait généré et sauvegardé avec succès !")
-                                    st.image(portrait_url, width=200, caption=f"Portrait de {character_name}")
-                                else:
-                                    st.warning("🎨 Portrait généré mais erreur de sauvegarde")
-                                    st.image(portrait_url, width=200, caption=f"Portrait de {character_name}")
-                            else:
-                                st.warning("⚠️ Impossible de générer le portrait, mais le personnage est créé.")
-
-                        except Exception as e:
-                            st.warning(f"⚠️ Erreur lors de la génération du portrait : {e}")
-                            st.info("💡 Le personnage est créé, vous pourrez générer le portrait plus tard.")
+                            st.session_state.pending_portrait = {
+                                "character_id": character_id,
+                                "name": character_name,
+                                "race": character_race,
+                                "char_class": character_class,
+                                "level": character_level,
+                                "gender": gender,
+                                "campaign_context": campaign_context,
+                                "style": art_style,
+                                "mood": portrait_mood,
+                                "campaign_id": selected_campaign_id,
+                            }
+                        except Exception:
+                            pass
 
                         # Redirection vers le chatbot + initialisation état
                         st.success("🎮 **Prêt à jouer !** Redirection vers le chat...")
                         # Charger la campagne complète dans le state
                         try:
-                            from src.data.models import get_user_campaigns
-
                             all_camps = get_user_campaigns(user_id)
                             st.session_state.campaign = next((c for c in all_camps if c["id"] == selected_campaign_id), None)
                         except Exception:
@@ -310,7 +319,9 @@ def show_character_page() -> None:
                             "class": character_class,
                             "race": character_race,
                             "level": character_level,
-                            "portrait_url": portrait_url if "portrait_url" in locals() else None,
+                            "gender": gender,
+                            # Portrait sera rempli par la génération différée si disponible
+                            "portrait_url": None,
                         }
                         try:
                             st.session_state.character = character_obj
@@ -363,12 +374,34 @@ def show_character_page() -> None:
                                 except Exception:
                                     pass
 
-                        # Petite pause puis redirection
-                        import time
+                            # Persister immédiatement l'init (hidden) pour éviter toute perte si l'utilisateur change de page
+                            try:
+                                from src.ai.chatbot import store_message_optimized
 
-                        time.sleep(1)
-                        st.session_state.page = "chatbot"
-                        st.rerun()
+                                system_content = (
+                                    "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène."
+                                )
+                                store_message_optimized(user_id, "system", system_content, selected_campaign_id)
+                                store_message_optimized(user_id, "user", intro, selected_campaign_id)
+                            except Exception:
+                                # Ne pas bloquer l'UX si la persistance échoue
+                                pass
+
+                            # Indiquer au chatbot de générer automatiquement la réponse d'introduction
+                            try:
+                                st.session_state.auto_start_intro = True
+                            except Exception:
+                                try:
+                                    st.session_state["auto_start_intro"] = True
+                                except Exception:
+                                    pass
+
+                        # Redirection immédiate: éviter les états transitoires d'affichage
+                        try:
+                            st.session_state.page = "chatbot"
+                            st.rerun()
+                        except Exception:
+                            pass
 
                 except Exception as e:
                     st.error(f"❌ Erreur lors de la création : {e}")

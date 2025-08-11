@@ -4,14 +4,14 @@ Tests pour le gestionnaire d'API centralisé
 
 import os
 import sys
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 # Ajouter le répertoire parent au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.ai.api_client import APIClientManager, get_openai_client, get_anthropic_client
+from src.ai.api_client import APIClientManager, get_anthropic_client, get_openai_client
 
 
 class TestAPIClientManager:

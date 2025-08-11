@@ -97,7 +97,7 @@ class TestChatbotLaunchFlow:
     @patch("src.ai.chatbot.call_ai_model_optimized")
     @patch("src.ai.chatbot.st")
     def test_launch_chatbot_error(self, mock_st, mock_call, mock_store_msg):
-        from src.ai.chatbot import launch_chat_interface, ChatbotError
+        from src.ai.chatbot import ChatbotError, launch_chat_interface
 
         sess = SessionLike()
         sess.campaign = {"id": 2}

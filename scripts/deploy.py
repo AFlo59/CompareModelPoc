@@ -7,12 +7,12 @@ Automatise le déploiement local, Docker et production.
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
-from pathlib import Path
-import shutil
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 # S'assurer qu'on travaille depuis la racine du projet
 script_dir = Path(__file__).parent
@@ -57,7 +57,16 @@ def run_command(cmd: str, cwd: str = None, check: bool = True) -> subprocess.Com
     """Exécute une commande shell."""
     print(f"{Colors.OKCYAN}▶️  {cmd}{Colors.ENDC}")
     try:
-        result = subprocess.run(cmd, shell=True, cwd=cwd, check=check, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            cwd=cwd,
+            check=check,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+        )
         if result.stdout:
             print(result.stdout)
         return result
@@ -310,9 +319,9 @@ RUN apt-get update && apt-get install -y \\
     build-essential \\
     && rm -rf /var/lib/apt/lists/*
 
-# Copier et installer les dépendances Python
+# Copier et installer les dépendances Python depuis le dossier requirements/
 COPY requirements/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements/requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim
@@ -325,9 +334,11 @@ WORKDIR /app
 # Copier les dépendances depuis le builder
 COPY --from=builder /root/.local /home/dnduser/.local
 
-# Copier le code source
+# Copier le code source depuis le dossier src/
 COPY src/ ./src/
-COPY *.py ./
+
+# Copier le fichier .env à la racine (s'il existe)
+COPY .env* ./
 
 # Définir les permissions
 RUN chown -R dnduser:dnduser /app
@@ -346,14 +357,18 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \\
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Commande par défaut
+# Commande par défaut - utiliser le bon chemin vers l'app Streamlit
 CMD ["streamlit", "run", "src/ui/app.py"]
 """
 
-    with open("Dockerfile", "w") as f:
+    # Créer le Dockerfile dans le dossier docker/
+    dockerfile_path = Path("docker/Dockerfile")
+    dockerfile_path.parent.mkdir(exist_ok=True)
+
+    with open(dockerfile_path, "w") as f:
         f.write(dockerfile_content)
 
-    print_success("Dockerfile créé")
+    print_success(f"Dockerfile créé dans {dockerfile_path}")
 
 
 def create_docker_compose():
@@ -399,10 +414,14 @@ volumes:
   app-data:
 """
 
-    with open("docker-compose.yml", "w") as f:
+    # Créer le docker-compose.yml dans le dossier docker/
+    compose_path = Path("docker/docker-compose.yml")
+    compose_path.parent.mkdir(exist_ok=True)
+
+    with open(compose_path, "w") as f:
         f.write(compose_content)
 
-    print_success("docker-compose.yml créé")
+    print_success(f"docker-compose.yml créé dans {compose_path}")
 
 
 def create_production_package():
@@ -414,15 +433,15 @@ def create_production_package():
     package_path = Path(f"dist/{package_name}")
     package_path.mkdir(parents=True, exist_ok=True)
 
-    # Fichiers à inclure
+    # Fichiers à inclure selon la structure réelle du projet
     files_to_include = [
         "src/",
-        "requirements/requirements.txt",
+        "requirements/",
         "run_app.py",
         "README.md",
         "docs/",
-        "Dockerfile",
-        "docker-compose.yml",
+        "docker/",
+        ".env*",
     ]
 
     print("📦 Copie des fichiers...")
@@ -464,7 +483,8 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Construire et lancer
+# Construire et lancer depuis le dossier docker/
+cd docker
 docker-compose up --build -d
 
 echo "✅ Application déployée !"
@@ -490,7 +510,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Construire et lancer
+REM Construire et lancer depuis le dossier docker/
+cd docker
 docker-compose up --build -d
 
 echo ✅ Application déployée !

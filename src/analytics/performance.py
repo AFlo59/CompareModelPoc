@@ -294,8 +294,9 @@ def show_system_monitoring() -> None:
     st.info("📊 **Informations Système** - Vue d'ensemble de l'état du système")
 
     try:
-        import psutil
         import platform
+
+        import psutil
 
         st.success("✅ Module psutil détecté")
 

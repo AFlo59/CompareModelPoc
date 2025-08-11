@@ -7,12 +7,12 @@ Simplifie toutes les tâches de développement local.
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
-from pathlib import Path
-import shutil
-import webbrowser
 import time
+import webbrowser
+from pathlib import Path
 
 
 class Colors:

@@ -3,6 +3,7 @@ Page des paramètres utilisateur
 """
 
 import streamlit as st
+
 from src.auth.auth import require_auth
 from src.data.models import get_user_campaigns, get_user_model_choice, save_model_choice
 

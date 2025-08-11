@@ -4,12 +4,12 @@ Module de modèles optimisé avec cache et requêtes performantes
 
 import json
 import logging
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
-from contextlib import contextmanager
 
-from src.data.database import get_optimized_connection, get_connection
+from src.data.database import get_connection, get_optimized_connection
 
 logger = logging.getLogger(__name__)
 
@@ -398,11 +398,11 @@ class CharacterManager:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT id, name, class, race, gender, description, portrait_url, created_at
+                SELECT id, campaign_id, name, class, race, gender, level, description, portrait_url, created_at
                 FROM characters
                 WHERE user_id = ? AND is_active = 1
                 ORDER BY created_at DESC
-            """,
+                """,
                 (user_id,),
             )
 
@@ -410,13 +410,15 @@ class CharacterManager:
             for row in cursor.fetchall():
                 character = {
                     "id": row[0],
-                    "name": row[1],
-                    "class": row[2],
-                    "race": row[3],
-                    "gender": row[4],
-                    "description": row[5],
-                    "portrait_url": row[6],
-                    "created_at": row[7],
+                    "campaign_id": row[1],
+                    "name": row[2],
+                    "class": row[3],
+                    "race": row[4],
+                    "gender": row[5],
+                    "level": row[6],
+                    "description": row[7],
+                    "portrait_url": row[8],
+                    "created_at": row[9],
                 }
                 characters.append(character)
 

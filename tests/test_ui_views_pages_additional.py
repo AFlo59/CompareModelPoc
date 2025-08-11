@@ -71,6 +71,8 @@ class TestCampaignPage:
                 "Français",  # language
                 "GPT-4",  # ai_model
                 "Épique",  # tone
+                "Fantasy Réaliste",  # gm_art_style (nouveau)
+                "Neutre",  # gm_expression (nouveau)
             ]
             st.multiselect.return_value = []
             st.text_area.return_value = "Description"
@@ -128,11 +130,12 @@ class TestCharacterPage:
             st.button.return_value = False
             st.form.return_value.__enter__ = Mock(return_value=_mk_col())
             st.form.return_value.__exit__ = Mock(return_value=None)
-            # Plusieurs selectbox sont appelés: campaign, race, class, art_style, portrait_mood
+            # Plusieurs selectbox sont appelés: campaign, race, class, gender, art_style, portrait_mood
             st.selectbox.side_effect = [
                 1,  # selected campaign id via selectbox(options=list(keys))
                 "Humain",  # race
                 "Guerrier",  # class
+                "Homme",  # genre (nouveau)
                 "Fantasy Réaliste",  # art_style
                 "Neutre",  # portrait_mood
             ]

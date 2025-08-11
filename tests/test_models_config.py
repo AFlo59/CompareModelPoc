@@ -11,13 +11,13 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.ai.models_config import (
+    AVAILABLE_MODELS,
+    CHAT_DEFAULTS,
     ModelConfig,
     ModelProvider,
-    AVAILABLE_MODELS,
-    get_model_config,
-    get_available_model_names,
     calculate_estimated_cost,
-    CHAT_DEFAULTS,
+    get_available_model_names,
+    get_model_config,
 )
 
 

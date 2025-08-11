@@ -12,10 +12,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 class TestDbContext:
     @patch("src.data.database.DatabaseConnection.get_connection")
     def test_begin_retry_on_error(self, mock_get_conn):
-        from src.data.database import get_optimized_connection
-
         # Première connexion lève sqlite3.Error sur BEGIN
         import sqlite3
+
+        from src.data.database import get_optimized_connection
 
         c1 = Mock()
         c1.execute.side_effect = [sqlite3.Error("bad")]

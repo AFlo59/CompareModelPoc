@@ -3,8 +3,9 @@ Page des performances et analytics
 """
 
 import streamlit as st
-from src.auth.auth import require_auth
+
 import src.analytics.performance as performance
+from src.auth.auth import require_auth
 
 
 def show_performance(user_id: int) -> None:

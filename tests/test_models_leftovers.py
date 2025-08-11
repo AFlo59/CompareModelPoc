@@ -3,9 +3,9 @@ Compléter src.data.models lignes restantes (sélections et petites branches)
 """
 
 import os
+import sqlite3
 import sys
 from unittest.mock import patch
-import sqlite3
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

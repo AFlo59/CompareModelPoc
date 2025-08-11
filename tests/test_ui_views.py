@@ -4,16 +4,17 @@ Tests pour les vues UI - pages Streamlit
 
 import os
 import sys
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 # Ajouter le répertoire parent au PYTHONPATH
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.ui.views.auth_page import show_auth_page, determine_user_next_page
+from src.ui.views.auth_page import determine_user_next_page, show_auth_page
 from src.ui.views.dashboard_page import show_dashboard_page
-from src.ui.views.settings_page import show_settings_page
 from src.ui.views.performance_page import show_performance_page
+from src.ui.views.settings_page import show_settings_page
 
 
 class TestAuthPage:

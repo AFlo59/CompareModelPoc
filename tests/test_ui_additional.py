@@ -4,8 +4,9 @@ Tests additionnels pour améliorer la couverture des modules UI
 
 import os
 import sys
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 import streamlit as st
 
 # Ajouter le répertoire parent au PYTHONPATH
