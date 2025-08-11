@@ -151,7 +151,7 @@ Thumbs.db
 *.pkl
 *.pickle
 models/
-data/
+/data/
 *.csv
 *.json
 *.sqlite
