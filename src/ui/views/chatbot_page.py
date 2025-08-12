@@ -114,10 +114,10 @@ def show_chatbot_page() -> None:
         col1, col2 = st.columns(2)
         with col1:
             if st.button("🔄 Autre campagne", use_container_width=True):
-                st.session_state.page = "campaign"
+                st.session_state.page = "dashboard"
                 st.rerun()
         with col2:
-            if st.button("🆕 Nouvelle", use_container_width=True):
+            if st.button("🆕 Nouvelle campagne", use_container_width=True):
                 st.session_state.page = "campaign"
                 st.rerun()
 
