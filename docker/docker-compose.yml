@@ -16,6 +16,7 @@ services:
     volumes:
       - app_data:/app/data
       - app_logs:/app/logs
+      - app_static:/app/static
       - ../src:/app/src:ro  # Code source en lecture seule
     user: "0:0"  # Assure l'accès en écriture aux volumes (root). Ajuster si nécessaire.
     restart: unless-stopped
@@ -45,4 +46,6 @@ volumes:
   app_data:
     driver: local
   app_logs:
+    driver: local
+  app_static:
     driver: local

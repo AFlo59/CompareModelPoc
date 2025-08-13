@@ -434,3 +434,8 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 ---
 
 **Amusez-vous bien dans vos aventures avec l'IA ! 🎲⚔️🧙‍♂️**
+ssh debian@51.210.243.134 "
+cd ~/docker && docker-compose down
+cp ~/backups/database_backup_TIMESTAMP.db ~/database.db
+cd ~/docker && docker-compose up -d
+"

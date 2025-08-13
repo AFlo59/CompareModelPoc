@@ -26,8 +26,8 @@ COPY . .
 
 # La base de données sera initialisée au runtime par l'application
 
-# Préparer les dossiers de données et logs (créés aussi au runtime)
-RUN mkdir -p /app/data /app/logs && \
+# Préparer les dossiers de données, logs et portraits (créés aussi au runtime)
+RUN mkdir -p /app/data /app/logs /app/static/portraits/gm /app/static/portraits/characters && \
     chmod -R 775 /app
 
 # Exposer le port Streamlit

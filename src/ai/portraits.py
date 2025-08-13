@@ -1,11 +1,15 @@
 """
-Génération de portraits optimisée avec gestionnaire d'API centralisé
+Génération de portraits optimisée avec gestionnaire d'API centralisé et stockage local
 """
 
 import logging
 import os
+import uuid
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import quote_plus
+
+import requests
 
 from ..data.models import update_campaign_portrait, update_character_portrait
 from .api_client import get_openai_client
@@ -14,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class PortraitGenerator:
-    """Générateur de portraits avec gestion d'erreurs améliorée."""
+    """Générateur de portraits avec gestion d'erreurs améliorée et stockage local."""
 
     # Paramètres par défaut images
     DEFAULT_CONFIG = {"size": "1024x1024", "n": 1}
@@ -26,6 +30,11 @@ class PortraitGenerator:
     PRIMARY_IMAGE_MODEL = "dall-e-3"  # modèle primaire (le plus récent)
     SECONDARY_IMAGE_MODEL = "dall-e-2"  # modèle secondaire
 
+    # Dossiers de stockage local
+    STATIC_DIR = Path("static/portraits")
+    GM_DIR = STATIC_DIR / "gm"
+    CHARACTERS_DIR = STATIC_DIR / "characters"
+
     # Configurations spécifiques par modèle pour éviter les erreurs 400
     MODEL_CONFIGS = {
         "dall-e-3": {"size": "1024x1024", "quality": "standard", "n": 1},  # DALL-E 3: quality=standard/hd
@@ -34,6 +43,56 @@ class PortraitGenerator:
 
     # Drapeau runtime: si quota/429 détecté sur dall-e-3, on évite de le retenter pendant la session
     _primary_disabled_due_to_quota: bool = False
+
+    @classmethod
+    def _ensure_directories(cls):
+        """Crée les dossiers de stockage s'ils n'existent pas."""
+        cls.STATIC_DIR.mkdir(parents=True, exist_ok=True)
+        cls.GM_DIR.mkdir(parents=True, exist_ok=True)
+        cls.CHARACTERS_DIR.mkdir(parents=True, exist_ok=True)
+
+    @classmethod
+    def _download_and_save_image(cls, image_url: str, filename: str, subdirectory: str) -> Optional[str]:
+        """
+        Télécharge une image DALL-E et la sauvegarde localement.
+
+        Args:
+            image_url: URL temporaire de l'image DALL-E
+            filename: Nom du fichier (sans extension)
+            subdirectory: 'gm' ou 'characters'
+
+        Returns:
+            Chemin relatif de l'image sauvegardée ou None en cas d'erreur
+        """
+        try:
+            cls._ensure_directories()
+
+            # Déterminer le dossier de destination
+            if subdirectory == "gm":
+                target_dir = cls.GM_DIR
+            elif subdirectory == "characters":
+                target_dir = cls.CHARACTERS_DIR
+            else:
+                logger.error(f"Sous-dossier invalide: {subdirectory}")
+                return None
+
+            # Télécharger l'image
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+
+            # Sauvegarder avec extension .png
+            file_path = target_dir / f"{filename}.png"
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+
+            # Retourner le chemin relatif pour la BDD
+            relative_path = f"static/portraits/{subdirectory}/{filename}.png"
+            logger.info(f"Image sauvegardée: {relative_path}")
+            return relative_path
+
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde de l'image {filename}: {e}")
+            return None
 
     @staticmethod
     def _build_prompt(name: str, description: Optional[str] = None, character_type: str = "personnage") -> str:
@@ -145,7 +204,13 @@ class PortraitGenerator:
         portrait_url = cls._generate_portrait(name, full_description, "personnage de jeu de rôle")
 
         if portrait_url and not portrait_url.startswith("https://api.dicebear.com"):
-            # Sauvegarder uniquement si c'est un portrait généré par IA (pas template)
+            # Si c'est une URL DALL-E temporaire, la télécharger et la sauvegarder localement
+            if portrait_url.startswith("https://oaidalleapiprodscus.blob.core.windows.net"):
+                filename = f"character_{character_id}"
+                local_path = cls._download_and_save_image(portrait_url, filename, "characters")
+                if local_path:
+                    portrait_url = local_path
+
             try:
                 update_character_portrait(character_id, portrait_url)
                 logger.info(f"Portrait personnage sauvegardé en BDD pour character_id={character_id}")
@@ -256,7 +321,13 @@ class PortraitGenerator:
         portrait_url = cls._generate_portrait("Maître du Jeu", full_description, "maître du jeu expérimenté")
 
         if portrait_url and not portrait_url.startswith("https://api.dicebear.com"):
-            # Sauvegarder uniquement si c'est un portrait généré par IA (pas template)
+            # Si c'est une URL DALL-E temporaire, la télécharger et la sauvegarder localement
+            if portrait_url.startswith("https://oaidalleapiprodscus.blob.core.windows.net"):
+                filename = f"gm_{campaign_id}"
+                local_path = cls._download_and_save_image(portrait_url, filename, "gm")
+                if local_path:
+                    portrait_url = local_path
+
             try:
                 update_campaign_portrait(campaign_id, portrait_url)
                 logger.info(f"Portrait MJ sauvegardé en BDD pour campaign_id={campaign_id}")
