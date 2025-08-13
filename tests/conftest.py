@@ -25,8 +25,16 @@ def test_db():
     try:
         from src.data import database
 
-        original_db_path = database.DB_PATH
-        database.DB_PATH = Path(test_db_file.name)
+        # Gérer le cas où DB_PATH n'est pas encore défini
+        try:
+            original_db_path = database.DB_PATH
+        except AttributeError:
+            original_db_path = database.DatabaseConfig.DB_PATH
+
+        # Patcher les deux pour être sûr
+        if hasattr(database, "DB_PATH"):
+            database.DB_PATH = Path(test_db_file.name)
+        database.DatabaseConfig.DB_PATH = Path(test_db_file.name)
 
         # Initialiser la DB de test avec le nouveau schéma optimisé
         # Force la recréation pour s'assurer du bon schéma
@@ -54,7 +62,9 @@ def test_db():
     finally:
         # Restaurer le chemin original
         if original_db_path:
-            database.DB_PATH = original_db_path
+            if hasattr(database, "DB_PATH"):
+                database.DB_PATH = original_db_path
+            database.DatabaseConfig.DB_PATH = original_db_path
 
         # Nettoyer le fichier temporaire
         try:

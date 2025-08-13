@@ -25,6 +25,8 @@ Une application Streamlit innovante qui permet de comparer les performances de d
 - 💰 **Calcul coûts temps réel** pour tous les modèles IA
 - 🖥️ **Monitoring système** avancé (CPU, RAM, réseau)
 - ⚡ **Base de données optimisée** (WAL mode, cache, pooling)
+- 🚨 **Gestion d'erreurs avancée** avec basculement automatique entre modèles
+- 🔄 **Alternatives automatiques** en cas de quota épuisé OpenAI
 
 ## 🛠️ Installation
 

@@ -1,0 +1,11 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile"
+
+[deploy]
+startCommand = "python run_app.py"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+
+[env]
+PORT = "8501"

@@ -3,6 +3,7 @@ Chatbot optimisé avec gestion d'erreurs et performance améliorées
 """
 
 import logging
+import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -46,8 +47,23 @@ class APIManager:
                 "model": model_config.name,
             }
         except Exception as e:
+            error_str = str(e)
             logger.error(f"Erreur OpenAI pour {model_config.name}: {e}")
-            raise ChatbotError(f"Erreur OpenAI: {str(e)}")
+
+            # Détecter les erreurs de quota spécifiques
+            if (
+                "billing_hard_limit_reached" in error_str
+                or "insufficient_quota" in error_str
+                or "You exceeded your current quota" in error_str
+                or "Billing hard limit has been reached" in error_str
+            ):
+                raise ChatbotError(
+                    f"Quota OpenAI dépassé: Votre limite de facturation a été atteinte. Vérifiez votre compte OpenAI."
+                )
+            elif "rate limit" in error_str.lower() or "429" in error_str:
+                raise ChatbotError(f"Rate limit OpenAI: Trop de requêtes. Veuillez patienter quelques secondes.")
+            else:
+                raise ChatbotError(f"Erreur OpenAI: {str(e)}")
 
     @staticmethod
     def call_anthropic_model(model_config, messages: List[Dict], temperature: float = None) -> Dict[str, Any]:
@@ -208,6 +224,47 @@ def launch_chat_interface_optimized(user_id: int) -> None:
     campaign = st.session_state.campaign
     campaign_id = campaign.get("id")
 
+    # *** INITIALISATION AUTOMATIQUE POUR NOUVELLE CAMPAGNE ***
+    # Vérifier si c'est une nouvelle campagne (pas d'historique existant)
+    # Désactiver en mode test pour éviter les conflits
+    is_test_mode = (
+        getattr(st.session_state, "_test_mode", False)
+        or "pytest" in sys.modules
+        or hasattr(st.session_state, "campaign")
+        and not hasattr(st.session_state, "user")
+    )
+
+    try:
+        from src.data.models import get_campaign_messages
+
+        existing_messages = get_campaign_messages(user_id, campaign_id, limit=1)
+
+        if not existing_messages and "history" not in st.session_state and not is_test_mode:
+            # Nouvelle campagne : initialiser avec un message de bienvenue
+            st.info("🎉 Nouvelle campagne détectée ! Initialisation en cours...")
+
+            # Message système initial
+            system_msg = "Tu es un MJ immersif, concis quand nécessaire, et tu avances l'histoire scène par scène."
+            store_message_optimized(user_id, "system", system_msg, campaign_id)
+
+            # Message d'introduction automatique
+            campaign_name = campaign.get("name", "Aventure Inconnue")
+            campaign_themes = campaign.get("themes", ["Fantasy"])
+            intro_prompt = f"Commence une nouvelle aventure dans la campagne '{campaign_name}' avec les thèmes {', '.join(campaign_themes)}. Présente l'univers et la situation initiale."
+
+            # Initialiser l'historique avec l'introduction
+            st.session_state.history = [{"role": "system", "content": system_msg}, {"role": "user", "content": intro_prompt}]
+
+            # Déclencher la génération automatique
+            st.session_state.auto_start_intro = True
+            store_message_optimized(user_id, "user", intro_prompt, campaign_id)
+
+            st.success(f"✅ Campagne '{campaign_name}' initialisée !")
+            time.sleep(1)  # Petite pause pour l'UX
+
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation de la campagne : {e}")
+
     # Déterminer le modèle automatiquement (campagne -> préférence utilisateur -> défaut)
     try:
         from src.data.models import get_user_model_choice
@@ -236,10 +293,21 @@ def launch_chat_interface_optimized(user_id: int) -> None:
     except Exception:
         auto_trigger = False
 
-    # Affichage de l'historique AVANT, champ de saisie APRÈS
-    for msg in st.session_state.history:
+    # Affichage de l'historique AVANT, champ de saisie APRÈS avec améliorations visuelles
+    for i, msg in enumerate(st.session_state.history):
         with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+            if msg["role"] == "assistant" and ("❌" in msg["content"] or "Erreur" in msg["content"]):
+                # Messages d'erreur avec style spécial
+                st.error(msg["content"])
+            else:
+                st.markdown(msg["content"])
+
+            # Timestamp pour les messages récents (optionnel)
+            if i >= len(st.session_state.history) - 3:  # 3 derniers messages
+                st.caption(f"Message #{i+1}")
+
+    # Container pour le nouveau message (auto-scroll) - sera utilisé plus tard
+    # message_anchor = st.empty()  # Commenté car non utilisé actuellement
 
     # Champ de saisie (en bas)
     prompt = st.chat_input("Votre action ?")
@@ -284,40 +352,218 @@ def launch_chat_interface_optimized(user_id: int) -> None:
             st.session_state.history.append({"role": "user", "content": prompt})
             store_message_optimized(user_id, "user", prompt, campaign_id)
 
-        # Générer la réponse
+        # Générer la réponse avec gestion d'erreurs améliorée
         with st.spinner("🎲 Le Maître du Jeu réfléchit..."):
-            try:
-                start_time = time.time()
-                ai_response = call_ai_model_optimized(model, st.session_state.history)
-                latency = time.time() - start_time
+            reply = None
+            error_occurred = False
+            retry_count = 0
+            max_retries = 2
 
-                reply = ai_response["content"]
+            while retry_count <= max_retries and reply is None:
+                try:
+                    start_time = time.time()
+                    ai_response = call_ai_model_optimized(model, st.session_state.history)
+                    latency = time.time() - start_time
 
-                # Stocker les performances
-                store_performance_optimized(
-                    user_id, model, latency, ai_response["tokens_in"], ai_response["tokens_out"], campaign_id
-                )
+                    reply = ai_response["content"]
 
-                # Afficher des métriques en temps réel
-                cost = calculate_estimated_cost(model, ai_response["tokens_in"], ai_response["tokens_out"])
-                st.caption(f"⚡ {latency:.2f}s | 🎫 {ai_response['tokens_out']} tokens | 💰 ${cost:.4f}")
+                    # Stocker les performances seulement si succès
+                    store_performance_optimized(
+                        user_id, model, latency, ai_response["tokens_in"], ai_response["tokens_out"], campaign_id
+                    )
 
-            except ChatbotError as e:
-                reply = f"❌ **Erreur technique :** {str(e)}\n\nVeuillez réessayer ou changer de modèle."
-                logger.error(f"Erreur ChatbotError: {e}")
-            except Exception as e:
-                reply = "❌ **Erreur inattendue :** Une erreur s'est produite.\n\nVeuillez réessayer."
-                logger.error(f"Erreur inattendue dans chat: {e}")
+                    # Afficher des métriques en temps réel
+                    cost = calculate_estimated_cost(model, ai_response["tokens_in"], ai_response["tokens_out"])
+                    st.caption(f"⚡ {latency:.2f}s | 🎫 {ai_response['tokens_out']} tokens | 💰 ${cost:.4f}")
+                    break
+
+                except ChatbotError as e:
+                    error_message = str(e)
+                    import os
+
+                    from src.ai.models_config import get_available_alternative_models
+
+                    # Option expérimentale : basculement automatique
+                    auto_fallback = os.getenv("AI_AUTO_FALLBACK", "false").lower() == "true"
+                    available_alternatives = get_available_alternative_models(model)
+
+                    # Détection des erreurs qui justifient un fallback automatique
+                    is_quota_error = (
+                        ("quota" in error_message.lower() and "dépassé" in error_message.lower())
+                        or ("billing" in error_message.lower() and "limit" in error_message.lower())
+                        or ("insufficient_quota" in error_message.lower())
+                    )
+
+                    is_timeout_error = (
+                        "timeout" in error_message.lower()
+                        or "timed out" in error_message.lower()
+                        or "request timed out" in error_message.lower()
+                    )
+
+                    is_rate_limit = "rate limit" in error_message.lower() or "429" in error_message
+
+                    # Basculement automatique pour quota, timeout, ou rate limit (si configuré)
+                    should_auto_fallback = auto_fallback and available_alternatives and (is_quota_error or is_timeout_error)
+
+                    if should_auto_fallback:
+                        # Essayer automatiquement avec le premier modèle alternatif disponible
+                        fallback_model = available_alternatives[0]
+                        error_type = "quota épuisé" if is_quota_error else "timeout" if is_timeout_error else "erreur"
+                        logger.info(f"Basculement automatique de {model} vers {fallback_model} ({error_type})")
+
+                        try:
+                            # Réessayer avec le modèle alternatif
+                            ai_response = call_ai_model_optimized(fallback_model, st.session_state.history)
+                            latency = time.time() - start_time
+
+                            reply = f"🔄 **Basculement automatique** : {model} → {fallback_model}\n\n{ai_response['content']}"
+
+                            # Stocker les performances avec le nouveau modèle
+                            store_performance_optimized(
+                                user_id,
+                                fallback_model,
+                                latency,
+                                ai_response["tokens_in"],
+                                ai_response["tokens_out"],
+                                campaign_id,
+                            )
+
+                            # Afficher des métriques
+                            cost = calculate_estimated_cost(
+                                fallback_model, ai_response["tokens_in"], ai_response["tokens_out"]
+                            )
+                            st.caption(
+                                f"⚡ {latency:.2f}s | 🎫 {ai_response['tokens_out']} tokens | 💰 ${cost:.4f} | 🔄 Modèle: {fallback_model}"
+                            )
+
+                            # Succès avec le modèle alternatif
+                            break
+
+                        except Exception as fallback_error:
+                            logger.warning(f"Échec du basculement automatique vers {fallback_model}: {fallback_error}")
+                            # Continuer avec le message d'erreur normal
+
+                    # Gestion spécifique par type d'erreur
+                    if is_quota_error:
+                        # Message d'erreur pour quota OpenAI
+                        alt_text = ""
+                        if available_alternatives:
+                            alt_text = f"\n\n🔄 **Modèles alternatifs disponibles :**\n"
+                            for alt_model in available_alternatives[:3]:  # Limite à 3 suggestions
+                                alt_config = get_model_config(alt_model)
+                                cost_comparison = alt_config.cost_per_1k_input
+                                alt_text += f"• **{alt_model}** - ${cost_comparison:.4f}/1K tokens ({alt_config.description[:40]}...)\n"
+                            alt_text += f"\n✨ **Suggestion :** Changez de modèle dans les paramètres ou via le sélecteur en haut de page."
+                            if not auto_fallback:
+                                alt_text += f"\n\n🔧 **Basculement automatique** : Ajoutez `AI_AUTO_FALLBACK=true` dans votre .env pour un basculement automatique."
+                        else:
+                            alt_text = f"\n\n⚠️ **Aucun modèle alternatif configuré.** Ajoutez des clés API pour Anthropic ou DeepSeek dans votre fichier .env."
+
+                        reply = (
+                            f"❌ **Quota {model} épuisé** ⛽\n\n"
+                            f"Votre limite de facturation a été atteinte.\n\n"
+                            f"🔧 **Solutions possibles :**\n"
+                            f"• Vérifiez votre compte et augmentez votre limite\n"
+                            f"• Attendez le renouvellement de votre quota mensuel{alt_text}\n\n"
+                            f"💡 Votre conversation est sauvegardée et vous pourrez continuer plus tard."
+                        )
+                        logger.error(f"Quota {model} épuisé: {e}")
+                        error_occurred = True
+                        break
+                    elif is_timeout_error:
+                        # Message d'erreur pour timeout
+                        alt_text = ""
+                        if available_alternatives:
+                            alt_text = f"\n\n🔄 **Modèles alternatifs disponibles :**\n"
+                            for alt_model in available_alternatives[:3]:
+                                alt_config = get_model_config(alt_model)
+                                cost_comparison = alt_config.cost_per_1k_input
+                                alt_text += f"• **{alt_model}** - ${cost_comparison:.4f}/1K tokens ({alt_config.description[:40]}...)\n"
+                            alt_text += f"\n✨ **Suggestion :** Changez de modèle dans les paramètres."
+                            if not auto_fallback:
+                                alt_text += f"\n\n🔧 **Basculement automatique** : `AI_AUTO_FALLBACK=true` dans votre .env."
+
+                        reply = (
+                            f"⏱️ **Timeout {model}** \n\n"
+                            f"Le modèle met trop de temps à répondre.\n\n"
+                            f"🔧 **Solutions :**\n"
+                            f"• Réessayez avec un message plus court\n"
+                            f"• Utilisez un autre modèle plus rapide{alt_text}\n\n"
+                            f"💡 Votre conversation reste sauvegardée."
+                        )
+                        logger.error(f"Timeout {model}: {e}")
+                        error_occurred = True
+                        break
+                    elif is_rate_limit:
+                        # Rate limit - retry possible
+                        if retry_count < max_retries:
+                            st.warning(
+                                f"⏳ Limite de débit {model} atteinte, nouvel essai dans quelques secondes... (tentative {retry_count + 1}/{max_retries + 1})"
+                            )
+                            time.sleep(2**retry_count)  # Backoff exponentiel
+                            retry_count += 1
+                            continue
+                        else:
+                            reply = f"❌ **Rate Limit {model} :** Trop de requêtes consécutives.\n\n💡 **Solution :** Attendez quelques minutes ou essayez un autre modèle dans les paramètres."
+                    else:
+                        # Autres erreurs techniques
+                        reply = f"❌ **Erreur technique {model} :** {error_message}\n\n🔄 **Vous pouvez :** Réessayer votre dernière action ou reformuler votre message."
+                    logger.error(f"Erreur ChatbotError {model}: {e}")
+                    error_occurred = True
+                    break
+
+                except Exception as e:
+                    if retry_count < max_retries:
+                        st.warning(f"⚠️ Erreur de connexion, nouvel essai... (tentative {retry_count + 1}/{max_retries + 1})")
+                        time.sleep(1)
+                        retry_count += 1
+                        continue
+                    else:
+                        reply = f"❌ **Erreur de connexion :** Impossible de contacter le serveur AI.\n\n🔄 **Suggestions :**\n- Vérifiez votre connexion internet\n- Réessayez dans quelques instants\n- La conversation reste sauvegardée"
+                        logger.error(f"Erreur inattendue dans chat après {max_retries} tentatives: {e}")
+                        error_occurred = True
+                        break
 
         # Afficher la réponse et sauvegarder
-        with st.chat_message("assistant"):
+        response_container = st.chat_message("assistant")
+        with response_container:
             st.markdown(reply)
 
-        st.session_state.history.append({"role": "assistant", "content": reply})
-        store_message_optimized(user_id, "assistant", reply, campaign_id)
+            # Bouton de retry si erreur
+            if error_occurred and not auto_trigger:
+                if st.button(f"🔄 Réessayer la dernière action", key=f"retry_{len(st.session_state.history)}"):
+                    # Ne pas ajouter la réponse d'erreur à l'historique
+                    st.rerun()
+
+        # Sauvegarder seulement si pas d'erreur ou si c'est une erreur informative
+        if reply and not error_occurred:
+            st.session_state.history.append({"role": "assistant", "content": reply})
+            store_message_optimized(user_id, "assistant", reply, campaign_id)
+        elif reply and error_occurred:
+            # Pour les erreurs, ajouter un message système informatif mais pas la réponse d'erreur complète
+            error_summary = "Erreur AI - voir message précédent pour détails"
+            st.session_state.history.append({"role": "assistant", "content": error_summary})
+            store_message_optimized(user_id, "assistant", error_summary, campaign_id)
+
+        # Auto-scroll vers le nouveau message + forcer un rerun
+        st.markdown(
+            """
+            <script>
+            // Auto-scroll vers le bas après nouveau message
+            setTimeout(function() {
+                window.scrollTo(0, document.body.scrollHeight);
+                // Alternative pour Streamlit
+                const chatContainer = document.querySelector('[data-testid="stChatMessage"]');
+                if (chatContainer) {
+                    chatContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }, 100);
+            </script>
+            """,
+            unsafe_allow_html=True,
+        )
 
         # Forcer un rerun pour ré-afficher l'historique AU-DESSUS du champ d'entrée
-        # (sinon, la première réponse peut apparaître sous la zone input lors du déclenchement auto)
         try:
             st.rerun()
         except Exception:
