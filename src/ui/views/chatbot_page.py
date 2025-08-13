@@ -151,22 +151,28 @@ def show_chatbot_page() -> None:
                         st.session_state.campaign = selected_campaign
                         st.session_state.selected_campaign = selected_campaign["id"]
 
-                        # Nettoyer l'historique pour la nouvelle campagne
-                        if "history" in st.session_state:
-                            del st.session_state["history"]
+                        # Charger l'historique de la nouvelle campagne AVANT le rerun
+                        try:
+                            messages = get_campaign_messages(st.session_state.user["id"], selected_campaign["id"])
+                            st.session_state.history = messages
+                            st.success(f"🔄 Campagne '{selected_campaign['name']}' chargée avec {len(messages)} messages!")
+                        except Exception as e:
+                            st.error(f"❌ Erreur lors du chargement des messages: {e}")
+                            # Nettoyer l'historique en cas d'erreur
+                            if "history" in st.session_state:
+                                del st.session_state["history"]
 
-                        # Forcer la réinitialisation
-                        st.success(f"🔄 Changement vers la campagne '{selected_campaign['name']}'")
+                        # Forcer la réinitialisation après avoir chargé les messages
                         st.rerun()
-
-                    # Charger l'historique de la campagne
-                    try:
-                        messages = get_campaign_messages(st.session_state.user["id"], selected_campaign["id"])
-                        st.session_state.history = messages
-                        st.success(f"📖 Campagne '{selected_campaign['name']}' chargée!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erreur: {e}")
+                    else:
+                        # Même campagne sélectionnée, juste recharger les messages
+                        try:
+                            messages = get_campaign_messages(st.session_state.user["id"], selected_campaign["id"])
+                            st.session_state.history = messages
+                            st.success(f"� Messages rechargés: {len(messages)} messages!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Erreur lors du rechargement: {e}")
         except Exception as e:
             st.error(f"Erreur campagnes: {e}")
 
