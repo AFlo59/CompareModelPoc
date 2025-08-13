@@ -166,18 +166,19 @@ def show_campaign_page() -> None:
                             import time
 
                             start = time.time()
-                            from src.ai.portraits import generate_gm_portrait_with_meta
+                            from src.ai.portraits import PortraitGenerator
 
-                            gm_portrait_url, used_model = generate_gm_portrait_with_meta(
+                            # Utiliser la nouvelle méthode enrichie pour générer le portrait du MJ
+                            gm_portrait_url = PortraitGenerator.generate_gm_portrait_with_save(
+                                campaign_id=campaign_id,
+                                campaign_name=campaign_name.strip(),
                                 campaign_theme=main_theme,
-                                campaign_name=campaign_name.strip() or None,
-                                secondary_themes=secondary_themes or None,
-                                tone=tone,
+                                secondary_themes=secondary_themes or [],
                                 language=language,
-                                model_name=ai_model,
-                                expression=gm_expression,
+                                ai_model=ai_model,
                                 art_style=gm_art_style,
-                                campaign_description=(description or None),
+                                expression=gm_expression,
+                                campaign_description=description or None,
                             )
                             latency = time.time() - start
 
@@ -214,7 +215,7 @@ def show_campaign_page() -> None:
                                 # Traquer la génération d'image dans les performances (0 tokens)
                                 PerformanceManager.store_performance(
                                     user_id=user_id,
-                                    model=used_model or "image-gen",
+                                    model="portrait-ai",
                                     latency=latency if "latency" in locals() else 0.0,
                                     tokens_in=0,
                                     tokens_out=0,

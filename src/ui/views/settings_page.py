@@ -64,31 +64,6 @@ def show_settings_page() -> None:
         st.warning(f"⚠️ Erreur lors du chargement du modèle: {e}")
         current_model = available_models[0]
 
-    # Sélecteur de modèle par défaut
-    selected_model = st.selectbox(
-        "Choisissez votre modèle IA par défaut:",
-        available_models,
-        index=available_models.index(current_model) if current_model in available_models else 0,
-        help="Ce modèle sera sélectionné par défaut lors de vos prochaines sessions de chat",
-    )
-
-    if st.button("💾 Sauvegarder les préférences"):
-        try:
-            # Tentative de sauvegarde avec gestion robuste
-            save_model_choice(st.session_state.user["id"], selected_model)
-            st.success(f"✅ Modèle par défaut sauvegardé : {selected_model}")
-
-            # Forcer le rafraîchissement du cache
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"❌ Erreur lors de la sauvegarde : {e}")
-            st.warning("💡 **Conseil :** Essayez de rafraîchir la page ou de vous déconnecter/reconnecter")
-
-            # Bouton de récupération d'erreur
-            if st.button("🔄 Rafraîchir la page"):
-                st.rerun()
-
     # Informations sur les modèles
     st.divider()
     st.markdown("### 📊 Informations sur les modèles")

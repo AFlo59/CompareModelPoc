@@ -113,10 +113,10 @@ class TestChatbotLaunchFlow:
 
         launch_chat_interface(1)
 
-        # La seconde sauvegarde (assistant) doit contenir un message d'erreur technique
+        # La seconde sauvegarde (assistant) doit contenir un message d'erreur résumé
         args_list = mock_store_msg.call_args_list
         assert len(args_list) == 2
-        assert "Erreur technique" in args_list[1].args[2]
+        assert "Erreur AI" in args_list[1].args[2]  # Message résumé d'erreur
 
     @patch("src.ai.chatbot.store_message_optimized")
     @patch("src.ai.chatbot.call_ai_model_optimized")
@@ -140,4 +140,4 @@ class TestChatbotLaunchFlow:
 
         args_list = mock_store_msg.call_args_list
         assert len(args_list) == 2
-        assert "Erreur inattendue" in args_list[1].args[2]
+        assert "Erreur AI" in args_list[1].args[2]  # Message résumé d'erreur

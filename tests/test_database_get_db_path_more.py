@@ -16,7 +16,13 @@ def test_get_db_path_module_alias_preferred_when_equal():
     import src.data.database as db
 
     db = importlib.reload(db)
-    with patch.object(db, "DB_PATH", Path("mod.db"), create=True), patch.object(db.DatabaseConfig, "DB_PATH", Path("mod.db")):
+    # Patch la variable d'environnement pour qu'elle n'interfère pas
+    with patch.dict(os.environ, {}, clear=False), patch.object(db, "DB_PATH", Path("mod.db"), create=True), patch.object(
+        db.DatabaseConfig, "DB_PATH", Path("mod.db")
+    ):
+        # S'assurer que DATABASE_PATH n'est pas définie
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         p = db.get_db_path()
         assert str(p).endswith("mod.db")
 
@@ -27,7 +33,13 @@ def test_get_db_path_config_preferred_when_different():
     import src.data.database as db
 
     db = importlib.reload(db)
-    with patch.object(db, "DB_PATH", Path("mod.db"), create=True), patch.object(db.DatabaseConfig, "DB_PATH", Path("cfg.db")):
+    # Patch la variable d'environnement pour qu'elle n'interfère pas
+    with patch.dict(os.environ, {}, clear=False), patch.object(db, "DB_PATH", Path("mod.db"), create=True), patch.object(
+        db.DatabaseConfig, "DB_PATH", Path("cfg.db")
+    ):
+        # S'assurer que DATABASE_PATH n'est pas définie
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         p = db.get_db_path()
         assert str(p).endswith("cfg.db")
 
@@ -38,9 +50,13 @@ def test_get_db_path_default_when_none():
     import src.data.database as db
 
     db = importlib.reload(db)
-    # Retirer DB_PATH alias et mettre config à None
-    if hasattr(db, "DB_PATH"):
-        delattr(db, "DB_PATH")
-    with patch.object(db.DatabaseConfig, "DB_PATH", None):
+    # Patch la variable d'environnement pour qu'elle n'interfère pas
+    with patch.dict(os.environ, {}, clear=False), patch.object(db.DatabaseConfig, "DB_PATH", None):
+        # S'assurer que DATABASE_PATH n'est pas définie
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
+        # Retirer DB_PATH alias
+        if hasattr(db, "DB_PATH"):
+            delattr(db, "DB_PATH")
         p = db.get_db_path()
         assert str(p).endswith("database.db")

@@ -28,7 +28,18 @@ class TestPortraitsAdditional:
 
     @patch("src.ai.portraits.get_openai_client", side_effect=ValueError("no key"))
     def test_generate_portrait_value_error(self, _mock):
+        import os
+
         from src.ai.portraits import generate_portrait
 
-        # ValueError doit retourner None (branches 87-90)
-        assert generate_portrait("Name", "Desc") is None
+        # Désactiver le fallback pour ce test car on teste le cas d'erreur sans fallback
+        original_fallback = os.getenv("PORTRAIT_FALLBACK")
+        os.environ.pop("PORTRAIT_FALLBACK", None)
+
+        try:
+            # ValueError doit retourner None quand fallback est désactivé (branches 87-90)
+            assert generate_portrait("Name", "Desc") is None
+        finally:
+            # Restaurer l'état original
+            if original_fallback is not None:
+                os.environ["PORTRAIT_FALLBACK"] = original_fallback
