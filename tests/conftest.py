@@ -76,43 +76,43 @@ def test_db():
 @pytest.fixture
 def clean_db(test_db):
     """Fixture pour nettoyer la base de données entre les tests."""
-    from src.data.database import DatabaseConnection
+    from src.data.database import DatabaseConnection, get_optimized_connection
+    import sqlite3
 
-    # Forcer une nouvelle connexion pour éviter les problèmes de connexion fermée
-    DatabaseConnection._connection = None
+    # Fermer toute connexion existante pour éviter les problèmes
+    if hasattr(DatabaseConnection, "_connection") and DatabaseConnection._connection:
+        try:
+            DatabaseConnection._connection.close()
+        except:
+            pass
+        DatabaseConnection._connection = None
 
     # Nettoyer toutes les tables avant le test
     try:
-        from src.data.database import get_optimized_connection
-
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
-
             # Supprimer toutes les données
             tables = ["performance_logs", "messages", "characters", "campaigns", "model_choices", "users"]
             for table in tables:
-                cursor.execute(f"DELETE FROM {table}")
-
-            conn.commit()
+                try:
+                    cursor.execute(f"DELETE FROM {table}")
+                except sqlite3.OperationalError:
+                    # Table n'existe pas, continuer
+                    pass
     except Exception as e:
         # En cas d'erreur, ne pas faire échouer le test
         print(f"Warning: Could not clean database before test: {e}")
 
     yield
 
-    # Nettoyer après le test et fermer la connexion proprement
+    # Nettoyer après le test
     try:
-        from src.data.database import get_optimized_connection
-
-        with get_optimized_connection() as conn:
-            cursor = conn.cursor()
-            for table in tables:
-                cursor.execute(f"DELETE FROM {table}")
-            conn.commit()
-
-        # Fermer et réinitialiser la connexion pour le test suivant
-        if DatabaseConnection._connection:
-            DatabaseConnection._connection.close()
+        # Fermer et réinitialiser la connexion pour éviter les conflits
+        if hasattr(DatabaseConnection, "_connection") and DatabaseConnection._connection:
+            try:
+                DatabaseConnection._connection.close()
+            except:
+                pass
             DatabaseConnection._connection = None
     except Exception as e:
         # En cas d'erreur, ne pas faire échouer le test
@@ -123,6 +123,7 @@ def clean_db(test_db):
 def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
     import bcrypt
+    import sqlite3
 
     from src.data.database import DatabaseConnection, get_optimized_connection
 
@@ -136,9 +137,27 @@ def sample_user(clean_db):
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
             if not cursor.fetchone():
-                # Tables manquantes, initialiser la base
-                init_db()
+                # Tables manquantes, fermer cette connexion et initialiser la base
+                pass
 
+        # Si les tables n'existent pas, les créer
+        try:
+            with get_optimized_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                if not cursor.fetchone():
+                    init_db()
+        except Exception:
+            # Forcer la réinitialisation de la connexion et réessayer
+            if hasattr(DatabaseConnection, "_connection") and DatabaseConnection._connection:
+                try:
+                    DatabaseConnection._connection.close()
+                except:
+                    pass
+                DatabaseConnection._connection = None
+            init_db()
+
+        # Créer l'utilisateur de test
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
 
@@ -152,12 +171,16 @@ def sample_user(clean_db):
                 hashed_password = bcrypt.hashpw("testpassword123".encode("utf-8"), bcrypt.gensalt())
                 cursor.execute("INSERT INTO users (email, password) VALUES (?, ?)", ("test@example.com", hashed_password))
                 user_id = cursor.lastrowid
-                conn.commit()
 
         return {"id": user_id, "email": "test@example.com"}
     except Exception as e:
         # Ne pas skip, mais plutôt lever l'erreur pour voir ce qui ne va pas
         print(f"Error creating sample user: {e}")
         # Essayer de réinitialiser la connexion et réessayer
-        DatabaseConnection._connection = None
+        if hasattr(DatabaseConnection, "_connection") and DatabaseConnection._connection:
+            try:
+                DatabaseConnection._connection.close()
+            except:
+                pass
+            DatabaseConnection._connection = None
         raise

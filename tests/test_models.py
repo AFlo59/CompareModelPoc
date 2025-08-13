@@ -185,7 +185,12 @@ class TestDatabaseModels:
 
     def test_get_user_model_choice(self, sample_user):
         """Test de récupération du choix de modèle utilisateur."""
+        from src.data.models import clear_cache
+
         user_id = sample_user["id"]
+
+        # Nettoyer le cache avant le test
+        clear_cache()
 
         # Aucun modèle sauvegardé
         result = get_user_model_choice(user_id)
