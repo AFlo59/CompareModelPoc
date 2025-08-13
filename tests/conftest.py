@@ -76,8 +76,9 @@ def test_db():
 @pytest.fixture
 def clean_db(test_db):
     """Fixture pour nettoyer la base de données entre les tests."""
-    from src.data.database import DatabaseConnection, get_optimized_connection
     import sqlite3
+
+    from src.data.database import DatabaseConnection, get_optimized_connection
 
     # Fermer toute connexion existante pour éviter les problèmes
     if hasattr(DatabaseConnection, "_connection") and DatabaseConnection._connection:
@@ -122,8 +123,9 @@ def clean_db(test_db):
 @pytest.fixture
 def sample_user(clean_db):
     """Fixture pour créer un utilisateur de test."""
-    import bcrypt
     import sqlite3
+
+    import bcrypt
 
     from src.data.database import DatabaseConnection, get_optimized_connection
 

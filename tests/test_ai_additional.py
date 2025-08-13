@@ -130,8 +130,9 @@ class TestPortraitsModule:
         Avec PORTRAIT_FALLBACK=true, même en cas d'erreur API,
         un template Dicebear est retourné en fallback.
         """
-        from src.ai.portraits import generate_portrait
         import os
+
+        from src.ai.portraits import generate_portrait
 
         # Activer le fallback pour ce test
         original_fallback = os.getenv("PORTRAIT_FALLBACK")
