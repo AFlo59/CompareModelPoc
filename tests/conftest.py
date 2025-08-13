@@ -128,17 +128,19 @@ def sample_user(clean_db):
 
     # S'assurer que la DB est bien initialisée avec le bon schéma
     try:
-        # Forcer une nouvelle connexion si nécessaire
-        if DatabaseConnection._connection is None:
-            DatabaseConnection._connection = None
+        # Forcer l'initialisation de la base de données si les tables n'existent pas
+        from src.data.database import init_db
+
+        # Vérifier si les tables existent, sinon les créer
+        with get_optimized_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cursor.fetchone():
+                # Tables manquantes, initialiser la base
+                init_db()
 
         with get_optimized_connection() as conn:
             cursor = conn.cursor()
-
-            # Vérifier que la table users existe
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-            if not cursor.fetchone():
-                raise RuntimeError("Table users not found")
 
             # Vérifier si l'utilisateur existe déjà
             cursor.execute("SELECT id FROM users WHERE email = ?", ("test@example.com",))
