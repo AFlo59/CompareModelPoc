@@ -393,13 +393,17 @@ class TestSettingsPage:
 
     @patch("src.ui.views.settings_page.require_auth")
     @patch("src.ui.views.settings_page.get_user_campaigns")
+    @patch("src.ui.views.settings_page.get_user_model_choice")
     @patch("streamlit.warning")
-    def test_show_settings_page_campaigns_error(self, mock_warning, mock_get_campaigns, mock_require_auth):
-        """Test settings - erreur chargement campagnes."""
+    def test_show_settings_page_campaigns_error(
+        self, mock_warning, mock_get_model_choice, mock_get_campaigns, mock_require_auth
+    ):
+        """Test settings - erreur chargement campagnes et modèle."""
         mock_require_auth.return_value = True
         mock_session_state = Mock()
         mock_session_state.user = {"id": 1, "email": "test@example.com"}
         mock_get_campaigns.side_effect = Exception("Database error")
+        mock_get_model_choice.side_effect = Exception("Model error")
 
         # Mock st.columns avec le bon nombre selon l'argument
         def create_mock_col():
@@ -421,14 +425,20 @@ class TestSettingsPage:
             "streamlit.columns", side_effect=mock_columns_side_effect
         ), patch("streamlit.button"), patch("streamlit.divider"), patch("streamlit.markdown"), patch("streamlit.info"), patch(
             "streamlit.metric"
+        ), patch(
+            "streamlit.expander"
         ):
             show_settings_page()
 
-            # La fonction appelle warning 2 fois (erreur + conseil)
-            assert mock_warning.call_count == 2
-            # Vérifier que l'erreur est dans l'un des appels
+            # Vérifier que les deux erreurs principales sont présentes
             call_args_list = [str(call) for call in mock_warning.call_args_list]
-            assert any("Erreur lors du chargement des statistiques" in call for call in call_args_list)
+            statistics_error_present = any("Erreur lors du chargement des statistiques" in call for call in call_args_list)
+            model_error_present = any("Erreur lors du chargement du modèle" in call for call in call_args_list)
+
+            # Au minimum les 2 erreurs doivent être présentes
+            assert statistics_error_present, "L'erreur de chargement des statistiques devrait être présente"
+            assert model_error_present, "L'erreur de chargement du modèle devrait être présente"
+            assert mock_warning.call_count >= 2, f"Expected at least 2 warnings, got {mock_warning.call_count}"
 
 
 class TestPerformancePage:
