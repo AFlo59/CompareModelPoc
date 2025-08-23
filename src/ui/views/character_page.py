@@ -15,6 +15,7 @@ from src.data.models import (
     get_user_characters,
     update_character_portrait,
 )
+from src.ui.components.image_utils import display_portrait
 
 
 def show_character_page() -> None:
@@ -59,7 +60,11 @@ def show_character_page() -> None:
 
                 with col1:
                     if character.get("portrait_url"):
-                        st.image(character["portrait_url"], width=100)
+                        try:
+                            portrait_path = display_portrait(character["portrait_url"])
+                            st.image(portrait_path, width=100)
+                        except Exception:
+                            st.write("🖼️ Portrait indisponible")
                     else:
                         st.write("🖼️ Pas de portrait")
 
@@ -326,7 +331,11 @@ def show_character_page() -> None:
                         col1, col2 = st.columns([1, 2])
                         with col1:
                             if portrait_url:
-                                st.image(portrait_url, width=150, caption=f"Portrait de {character_name}")
+                                try:
+                                    portrait_path = display_portrait(portrait_url)
+                                    st.image(portrait_path, width=150, caption=f"Portrait de {character_name}")
+                                except Exception:
+                                    st.write("🖼️ Portrait indisponible")
                             else:
                                 st.write("🖼️ Pas de portrait")
 

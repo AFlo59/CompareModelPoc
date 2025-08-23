@@ -197,23 +197,41 @@ docker-compose up --build -d
 ```
 
 ### 6.2 Mise à jour de l'application
+
+#### 🚀 Méthode Automatique (Recommandée)
+```bash
+# Mise à jour complète avec préservation des données
+./scripts/update_vps.sh
+```
+
+Cette commande fait automatiquement :
+- ✅ Création du package de déploiement
+- ✅ Sauvegarde automatique de la base de données  
+- ✅ Arrêt sécurisé de l'application (volumes préservés)
+- ✅ Déploiement de la nouvelle version
+- ✅ Restauration de la base de données
+- ✅ Redémarrage et vérification
+
+#### 🛠️ Méthode Manuelle (si nécessaire)
 ```bash
 # 1. Créer un nouveau package localement
 python scripts/deploy.py package
 
-# 2. Copier sur le serveur
-scp dist/nouveau-package.zip debian@51.210.243.134:~/
-
-# 3. Déployer sur le serveur
+# 2. Sauvegarder la base de données sur le serveur
 ssh debian@51.210.243.134 "
-cd ~/docker
-docker-compose down
+mkdir -p ~/backups
+docker cp docker_app_1:/app/database.db ~/backups/backup_\$(date +%Y%m%d_%H%M%S).db
+"
 
-cd ~/
-unzip -o nouveau-package.zip
+# 3. Copier le nouveau package
+scp dist/dnd-gamemaster-*.zip debian@51.210.243.134:~/
 
-cd ~/docker
-docker-compose up --build -d
+# 4. Déployer avec restauration de la DB
+ssh debian@51.210.243.134 "
+cd ~/docker && docker-compose down
+cd ~/ && unzip -o dnd-gamemaster-*.zip
+cp ~/backups/backup_*.db ./database.db
+cd ~/docker && docker-compose up --build -d
 "
 ```
 

@@ -9,6 +9,7 @@ import streamlit as st
 from src.ai.chatbot import launch_chat_interface
 from src.auth.auth import logout, require_auth
 from src.data.models import get_campaign_messages, get_user_campaigns, get_user_characters
+from src.ui.components.image_utils import display_portrait
 
 
 def show_chatbot_page() -> None:
@@ -206,7 +207,8 @@ def show_chatbot_page() -> None:
                 gm_portrait = camp.get("gm_portrait")
                 if gm_portrait and str(gm_portrait).strip() and gm_portrait != "None":
                     try:
-                        st.image(gm_portrait, width=150, caption="🧙‍♂️ Maître du Jeu")
+                        portrait_path = display_portrait(gm_portrait)
+                        st.image(portrait_path, width=150, caption="🧙‍♂️ Maître du Jeu")
                     except Exception:
                         # Fallback si l'URL est invalide
                         st.image(
@@ -247,7 +249,8 @@ def show_chatbot_page() -> None:
                 char_portrait = char.get("portrait_url")
                 if char_portrait and str(char_portrait).strip() and char_portrait != "None":
                     try:
-                        st.image(char_portrait, width=150, caption=f"🎭 {char['name']}")
+                        portrait_path = display_portrait(char_portrait)
+                        st.image(portrait_path, width=150, caption=f"🎭 {char['name']}")
                     except Exception:
                         # Fallback si l'URL est invalide
                         st.image(
