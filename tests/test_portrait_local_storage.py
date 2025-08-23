@@ -177,11 +177,16 @@ class TestImageUtils:
     @patch("pathlib.Path.exists", return_value=True)
     def test_get_portrait_path_local_exists(self, mock_exists):
         """Test get_portrait_path avec fichier local existant."""
+        from pathlib import Path
+
         from src.ui.components.image_utils import get_portrait_path
 
         local_path = "static/portraits/characters/character_123.png"
         result = get_portrait_path(local_path)
-        assert result == local_path
+
+        # Normaliser les chemins pour comparaison cross-platform (Windows vs Unix)
+        expected_path = str(Path(local_path))
+        assert result == expected_path
 
     @patch("pathlib.Path.exists", return_value=False)
     def test_get_portrait_path_local_not_exists(self, mock_exists):
