@@ -13,12 +13,12 @@ from src.data.database import get_connection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Coûts par modèle (USD par 1K tokens) - Mis à jour avec les tarifs actuels
+# Coûts par modèle (USD par 1K tokens) - TARIFS ACTUELS 2025
 MODEL_COSTS = {
-    "GPT-4": {"in": 0.03, "out": 0.06},
-    "GPT-4o": {"in": 0.005, "out": 0.015},
-    "Claude 3.5 Sonnet": {"in": 0.003, "out": 0.015},
-    "DeepSeek": {"in": 0.00014, "out": 0.00028},  # Tarifs DeepSeek mis à jour
+    "GPT-4": {"in": 0.030, "out": 0.060},  # $30/$60 per 1M tokens
+    "GPT-4o": {"in": 0.0025, "out": 0.010},  # $2.50/$10 per 1M tokens
+    "Claude 3.5 Sonnet": {"in": 0.003, "out": 0.015},  # $3/$15 per 1M tokens
+    "DeepSeek V3": {"in": 0.00014, "out": 0.00028},  # $0.14/$0.28 per 1M tokens
 }
 
 
@@ -61,7 +61,13 @@ def get_performance_data(user_id: int, days: int = 30) -> pd.DataFrame:
 
 def calculate_cost(row: pd.Series) -> float:
     """Calcule le coût d'une requête basé sur le modèle et les tokens."""
-    costs = MODEL_COSTS.get(row["model"], {"in": 0.01, "out": 0.01})
+    model_name = row["model"]
+
+    # Gestion de la rétrocompatibilité pour DeepSeek
+    if model_name == "DeepSeek":
+        model_name = "DeepSeek V3"
+
+    costs = MODEL_COSTS.get(model_name, {"in": 0.01, "out": 0.01})
     return round((row["tokens_in"] / 1000) * costs["in"] + (row["tokens_out"] / 1000) * costs["out"], 4)
 
 

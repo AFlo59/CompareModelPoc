@@ -23,7 +23,7 @@ class TestQuotaErrorHandling:
         assert "GPT-4" not in alternatives
 
         # Doit inclure les modèles non-OpenAI
-        expected_alternatives = ["Claude 3.5 Sonnet", "DeepSeek"]
+        expected_alternatives = ["Claude 3.5 Sonnet", "DeepSeek V3"]
         for alt in expected_alternatives:
             assert alt in alternatives
 
@@ -32,7 +32,7 @@ class TestQuotaErrorHandling:
         alternatives = get_alternative_models("Claude 3.5 Sonnet")
 
         # Doit inclure tous les autres modèles
-        expected_alternatives = ["GPT-4", "GPT-4o", "DeepSeek"]
+        expected_alternatives = ["GPT-4", "GPT-4o", "DeepSeek V3"]
         for alt in expected_alternatives:
             assert alt in alternatives
 
@@ -43,9 +43,9 @@ class TestQuotaErrorHandling:
         """Test des alternatives disponibles avec clés API."""
         alternatives = get_available_alternative_models("GPT-4")
 
-        # Avec les clés API mockées, doit inclure Claude et DeepSeek
+        # Avec les clés API mockées, doit inclure Claude et DeepSeek V3
         assert "Claude 3.5 Sonnet" in alternatives
-        assert "DeepSeek" in alternatives
+        assert "DeepSeek V3" in alternatives
         assert "GPT-4" not in alternatives
         assert "GPT-4o" not in alternatives
 
