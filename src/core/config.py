@@ -28,31 +28,35 @@ class Config:
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
-    # Modèles supportés
+    # Modèles supportés - TARIFS ACTUELS 2025
     SUPPORTED_MODELS = {
         "GPT-4": {
             "provider": "openai",
             "model_name": "gpt-4",
             "description": "🚀 Le plus avancé, créatif et précis",
-            "cost_per_1k_tokens": {"input": 0.03, "output": 0.06},
+            "cost_per_1k_tokens": {"input": 0.030, "output": 0.060},  # $30/$60 per 1M
+            "context_window": 8192,
         },
         "GPT-4o": {
             "provider": "openai",
             "model_name": "gpt-4o",
-            "description": "⚡ Optimisé, rapide et économique",
-            "cost_per_1k_tokens": {"input": 0.005, "output": 0.015},
+            "description": "⚡ Optimisé, 90% moins cher, contexte 128k",
+            "cost_per_1k_tokens": {"input": 0.0025, "output": 0.010},  # $2.50/$10 per 1M
+            "context_window": 128000,
         },
         "Claude 3.5 Sonnet": {
             "provider": "anthropic",
             "model_name": "claude-3-5-sonnet-20240620",
-            "description": "🎭 Excellent pour le roleplay et la narration",
-            "cost_per_1k_tokens": {"input": 0.003, "output": 0.015},
+            "description": "🎭 Expert narrateur, contexte 200k tokens",
+            "cost_per_1k_tokens": {"input": 0.003, "output": 0.015},  # $3/$15 per 1M
+            "context_window": 200000,
         },
-        "DeepSeek": {
+        "DeepSeek V3": {
             "provider": "deepseek",
             "model_name": "deepseek-chat",
-            "description": "💰 Le plus économique, bon rapport qualité/prix",
-            "cost_per_1k_tokens": {"input": 0.00014, "output": 0.00028},
+            "description": "💰 Ultra-économique, 50x moins cher que GPT-4o",
+            "cost_per_1k_tokens": {"input": 0.00014, "output": 0.00028},  # $0.14/$0.28 per 1M
+            "context_window": 64000,
         },
     }
 
@@ -89,6 +93,9 @@ class Config:
     @classmethod
     def get_model_config(cls, model_name: str) -> Dict[str, Any]:
         """Récupère la configuration d'un modèle."""
+        # Gestion de la rétrocompatibilité pour DeepSeek
+        if model_name == "DeepSeek":
+            model_name = "DeepSeek V3"
         return cls.SUPPORTED_MODELS.get(model_name, {})
 
     @classmethod

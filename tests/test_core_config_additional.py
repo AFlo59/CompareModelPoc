@@ -20,7 +20,7 @@ class TestCoreConfigAdditional:
         # Toutes les clés présentes -> tous les modèles disponibles
         models = cfg.Config.get_available_models()
         # Au moins 4 modèles spécifiés
-        assert set(["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]).issubset(set(models))
+        assert set(["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek V3"]).issubset(set(models))
 
     @patch.dict(os.environ, {}, clear=True)
     def test_get_model_config_and_lists(self):
@@ -33,4 +33,4 @@ class TestCoreConfigAdditional:
         gpt4 = cfg.Config.get_model_config("GPT-4")
         assert isinstance(gpt4, dict) and gpt4.get("provider") == "openai"
         names = cfg.Config.get_all_model_names()
-        assert "GPT-4o" in names and "DeepSeek" in names
+        assert "GPT-4o" in names and "DeepSeek V3" in names

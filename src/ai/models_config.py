@@ -30,7 +30,7 @@ class ModelProvider(Enum):
     DEEPSEEK = "deepseek"
 
 
-# Configuration des modèles disponibles
+# Configuration des modèles disponibles - TARIFS 2025 ACTUELS
 AVAILABLE_MODELS: Dict[str, ModelConfig] = {
     "GPT-4": ModelConfig(
         name="GPT-4",
@@ -38,8 +38,8 @@ AVAILABLE_MODELS: Dict[str, ModelConfig] = {
         provider=ModelProvider.OPENAI.value,
         max_tokens=1000,
         temperature_default=0.8,
-        cost_per_1k_input=0.03,
-        cost_per_1k_output=0.06,
+        cost_per_1k_input=0.030,  # $30.00 per 1M tokens
+        cost_per_1k_output=0.060,  # $60.00 per 1M tokens
         description="Le plus avancé, excellent pour la créativité et le raisonnement complexe",
     ),
     "GPT-4o": ModelConfig(
@@ -48,9 +48,9 @@ AVAILABLE_MODELS: Dict[str, ModelConfig] = {
         provider=ModelProvider.OPENAI.value,
         max_tokens=1000,
         temperature_default=0.8,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
-        description="Version optimisée, plus rapide et économique que GPT-4",
+        cost_per_1k_input=0.0025,  # $2.50 per 1M tokens
+        cost_per_1k_output=0.010,  # $10.00 per 1M tokens
+        description="Version optimisée, 90% moins cher que GPT-4, contexte 128k",
     ),
     "Claude 3.5 Sonnet": ModelConfig(
         name="Claude 3.5 Sonnet",
@@ -58,25 +58,29 @@ AVAILABLE_MODELS: Dict[str, ModelConfig] = {
         provider=ModelProvider.ANTHROPIC.value,
         max_tokens=1000,
         temperature_default=0.8,
-        cost_per_1k_input=0.003,
-        cost_per_1k_output=0.015,
-        description="Excellent pour le roleplay, la narration et l'analyse de texte",
+        cost_per_1k_input=0.003,  # $3.00 per 1M tokens
+        cost_per_1k_output=0.015,  # $15.00 per 1M tokens
+        description="Excellent pour le roleplay, contexte 200k tokens, narrateur expert",
     ),
-    "DeepSeek": ModelConfig(
-        name="DeepSeek",
+    "DeepSeek V3": ModelConfig(
+        name="DeepSeek V3",
         api_name="deepseek-chat",
         provider=ModelProvider.DEEPSEEK.value,
         max_tokens=1000,
         temperature_default=0.8,
-        cost_per_1k_input=0.0001,
-        cost_per_1k_output=0.0002,
-        description="Alternative très économique avec de bonnes performances",
+        cost_per_1k_input=0.00014,  # $0.14 per 1M tokens
+        cost_per_1k_output=0.00028,  # $0.28 per 1M tokens
+        description="Ultra-économique, 50x moins cher que GPT-4o, idéal pour tests massifs",
     ),
 }
 
 
 def get_model_config(model_name: str) -> ModelConfig:
     """Retourne la configuration d'un modèle."""
+    # Gestion de la rétrocompatibilité pour DeepSeek
+    if model_name == "DeepSeek":
+        model_name = "DeepSeek V3"
+
     if model_name not in AVAILABLE_MODELS:
         # Fallback vers GPT-4
         return AVAILABLE_MODELS["GPT-4"]

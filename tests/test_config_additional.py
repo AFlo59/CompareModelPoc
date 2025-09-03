@@ -17,7 +17,7 @@ class TestCoreConfig:
 
         models = Config.SUPPORTED_MODELS
         # Vérifier quelques clés essentielles
-        for name in ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]:
+        for name in ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek V3"]:
             assert name in models
             cfg = models[name]
             assert "provider" in cfg and "model_name" in cfg and "cost_per_1k_tokens" in cfg
