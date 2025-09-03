@@ -79,7 +79,7 @@ class TestAvailableModels:
 
     def test_all_models_present(self):
         """Test que tous les modèles attendus sont présents."""
-        expected_models = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]
+        expected_models = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek V3"]
         assert set(AVAILABLE_MODELS.keys()) == set(expected_models)
 
     def test_gpt4_config(self):
@@ -99,8 +99,8 @@ class TestAvailableModels:
         assert config.name == "GPT-4o"
         assert config.api_name == "gpt-4o"
         assert config.provider == ModelProvider.OPENAI.value
-        assert config.cost_per_1k_input == 0.005
-        assert config.cost_per_1k_output == 0.015
+        assert config.cost_per_1k_input == 0.0025  # Tarif 2025: $2.50 per 1M tokens
+        assert config.cost_per_1k_output == 0.010  # Tarif 2025: $10.00 per 1M tokens
 
     def test_claude_config(self):
         """Test de la configuration Claude."""
@@ -112,13 +112,13 @@ class TestAvailableModels:
         assert config.cost_per_1k_output == 0.015
 
     def test_deepseek_config(self):
-        """Test de la configuration DeepSeek."""
-        config = AVAILABLE_MODELS["DeepSeek"]
-        assert config.name == "DeepSeek"
+        """Test de la configuration DeepSeek V3."""
+        config = AVAILABLE_MODELS["DeepSeek V3"]
+        assert config.name == "DeepSeek V3"
         assert config.api_name == "deepseek-chat"
         assert config.provider == ModelProvider.DEEPSEEK.value
-        assert config.cost_per_1k_input == 0.0001
-        assert config.cost_per_1k_output == 0.0002
+        assert config.cost_per_1k_input == 0.00014  # Tarif 2025: $0.14 per 1M tokens
+        assert config.cost_per_1k_output == 0.00028  # Tarif 2025: $0.28 per 1M tokens
 
 
 class TestModelConfigFunctions:
@@ -137,10 +137,18 @@ class TestModelConfigFunctions:
         assert config.name == "GPT-4"
         assert config.api_name == "gpt-4"
 
+    def test_get_model_config_deepseek_retrocompat(self):
+        """Test de rétrocompatibilité pour DeepSeek -> DeepSeek V3."""
+        config = get_model_config("DeepSeek")
+        # Doit retourner la configuration DeepSeek V3
+        assert config.name == "DeepSeek V3"
+        assert config.api_name == "deepseek-chat"
+        assert config.cost_per_1k_input == 0.00014
+
     def test_get_available_model_names(self):
         """Test de récupération des noms de modèles disponibles."""
         names = get_available_model_names()
-        expected = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek"]
+        expected = ["GPT-4", "GPT-4o", "Claude 3.5 Sonnet", "DeepSeek V3"]
         assert set(names) == set(expected)
         assert len(names) == 4
 
@@ -154,16 +162,24 @@ class TestModelConfigFunctions:
     def test_calculate_estimated_cost_gpt4o(self):
         """Test de calcul de coût pour GPT-4o."""
         cost = calculate_estimated_cost("GPT-4o", 2000, 1000)
-        # 2000 * 0.005/1000 + 1000 * 0.015/1000 = 0.01 + 0.015 = 0.025
-        expected = 0.01 + 0.015
+        # 2000 * 0.0025/1000 + 1000 * 0.010/1000 = 0.005 + 0.010 = 0.015
+        expected = 0.005 + 0.010
         assert cost == expected
 
     def test_calculate_estimated_cost_deepseek(self):
-        """Test de calcul de coût pour DeepSeek (très économique)."""
+        """Test de calcul de coût pour DeepSeek V3 (très économique)."""
+        cost = calculate_estimated_cost("DeepSeek V3", 10000, 5000)
+        # 10000 * 0.00014/1000 + 5000 * 0.00028/1000 = 0.0014 + 0.0014 = 0.0028
+        expected = 0.0014 + 0.0014
+        assert abs(cost - expected) < 1e-10  # Précision flottante
+
+    def test_calculate_estimated_cost_deepseek_retrocompat(self):
+        """Test de calcul de coût avec ancien nom DeepSeek (rétrocompatibilité)."""
         cost = calculate_estimated_cost("DeepSeek", 10000, 5000)
-        # 10000 * 0.0001/1000 + 5000 * 0.0002/1000 = 0.001 + 0.001 = 0.002
-        expected = 0.001 + 0.001
-        assert cost == expected
+        # Doit utiliser les prix DeepSeek V3
+        # 10000 * 0.00014/1000 + 5000 * 0.00028/1000 = 0.0014 + 0.0014 = 0.0028
+        expected = 0.0014 + 0.0014
+        assert abs(cost - expected) < 1e-10  # Précision flottante
 
     def test_calculate_estimated_cost_unknown_model(self):
         """Test de calcul de coût pour un modèle inconnu (fallback GPT-4)."""

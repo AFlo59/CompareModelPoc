@@ -446,15 +446,28 @@ def create_production_package():
 
     print("📦 Copie des fichiers...")
     for item in files_to_include:
-        src_path = Path(item)
-        if src_path.exists():
-            if src_path.is_dir():
-                shutil.copytree(src_path, package_path / item, dirs_exist_ok=True)
+        # Gestion spéciale pour les fichiers .env avec wildcard
+        if item == ".env*":
+            import glob
+
+            env_files = glob.glob(".env*")
+            if env_files:
+                for env_file in env_files:
+                    if Path(env_file).is_file():
+                        shutil.copy2(env_file, package_path / env_file)
+                        print_success(f"Copié: {env_file}")
             else:
-                shutil.copy2(src_path, package_path / item)
-            print_success(f"Copié: {item}")
+                print_warning(f"Non trouvé: {item}")
         else:
-            print_warning(f"Non trouvé: {item}")
+            src_path = Path(item)
+            if src_path.exists():
+                if src_path.is_dir():
+                    shutil.copytree(src_path, package_path / item, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src_path, package_path / item)
+                print_success(f"Copié: {item}")
+            else:
+                print_warning(f"Non trouvé: {item}")
 
     # Créer les scripts de déploiement
     create_deployment_scripts(package_path)
@@ -493,7 +506,7 @@ echo "📋 Logs: docker-compose logs -f"
 echo "🛑 Arrêt: docker-compose down"
 """
 
-    with open(package_path / "deploy.sh", "w") as f:
+    with open(package_path / "deploy.sh", "w", encoding="utf-8") as f:
         f.write(quick_deploy)
 
     # Script Windows
@@ -521,7 +534,7 @@ echo 🛑 Arrêt: docker-compose down
 pause
 """
 
-    with open(package_path / "deploy.bat", "w") as f:
+    with open(package_path / "deploy.bat", "w", encoding="utf-8") as f:
         f.write(quick_deploy_bat)
 
     print_success("Scripts de déploiement créés")
